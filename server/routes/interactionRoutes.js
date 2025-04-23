@@ -6,6 +6,7 @@ const { verifyToken } = require('../middleware/auth');
 // Routes pour les interactions avec les contenus
 router.post('/content', verifyToken, interactionController.handleContentInteraction);
 router.get('/content/:contentId/stats', interactionController.getContentInteractionStats);
+router.get('/content/:contentId/user', verifyToken, interactionController.getUserContentInteractions);
 
 // Routes pour les interactions avec les commentaires
 router.post('/comment', verifyToken, interactionController.handleCommentInteraction);
@@ -14,5 +15,6 @@ router.get('/comment/:commentId/stats', interactionController.getCommentInteract
 // Routes pour les interactions avec les diagnostics
 router.post('/diagnostic', verifyToken, interactionController.handleDiagnosticInteraction);
 router.get('/diagnostic/:diagnosticId/stats', interactionController.getDiagnosticInteractionStats);
+router.get('/diagnostic/:diagnosticId/user', verifyToken, interactionController.getUserDiagnosticInteractions);
 
 module.exports = router;

@@ -30,26 +30,38 @@ const apiClient = axios.create({
   timeout: 30000, // Augmenter le timeout à 30 secondes
 });
 
-// Add a request interceptor to add the auth token to every request
+// Combinaison des deux intercepteurs en un seul
 apiClient.interceptors.request.use(
   async (config) => {
     try {
       const token = await getSecureItem(STORAGE_KEYS.AUTH_TOKEN);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
-        console.log('Added token to request headers');
-      } else {
-        console.log('No token available for request');
+        console.log('Token ajouté aux en-têtes');
       }
     } catch (error) {
-      console.error('Error setting auth token:', error);
+      console.error('Erreur lors de l\'ajout du token:', error);
     }
     
-    // Log the request for debugging
-    console.log('Making request to:', config.baseURL + config.url, 'with data:', config.data);
+    console.log('Requête API:', config.method.toUpperCase(), config.url, config.headers);
     return config;
   },
-  (error) => {
+  error => {
+    console.error('Erreur de requête API:', error);
+    return Promise.reject(error);
+  }
+);
+
+apiClient.interceptors.response.use(
+  response => {
+    console.log('Réponse API:', response.status, response.config.url);
+    return response;
+  },
+  error => {
+    console.error('Erreur de réponse API:', 
+      error.response ? error.response.status : 'Pas de réponse',
+      error.config ? error.config.url : 'URL inconnue'
+    );
     return Promise.reject(error);
   }
 );

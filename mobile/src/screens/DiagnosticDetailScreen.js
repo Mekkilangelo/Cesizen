@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Share, Alert } from 'react-native';
-import { Text, Card, Button, ProgressBar, Divider, useTheme, IconButton } from 'react-native-paper';
+import { Text, Card, Button, Divider, useTheme, ProgressBar, IconButton } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchDiagnosticById, updateDiagnostic } from '../store/diagnosticSlice';
-import { likeDiagnostic, dislikeDiagnostic, favoriteDiagnostic } from '../store/interactionSlice';
-import { Ionicons } from '@expo/vector-icons';
+import { fetchDiagnosticById, deleteDiagnostic } from '../store/diagnosticSlice';
 import useResponsive from '../hooks/useResponsive';
+import { CommonActions } from '@react-navigation/native';
 
 const DiagnosticDetailScreen = ({ route, navigation }) => {
   const { id } = route.params || {};
@@ -13,137 +13,25 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
   const theme = useTheme();
   const { isMobile } = useResponsive();
   const { currentDiagnostic, isLoading } = useSelector(state => state.diagnostics);
-  const [stats, setStats] = useState({ likes: 0, dislikes: 0, views: 0, favorites: 0 });
-  const [userInteractions, setUserInteractions] = useState({});
   
-  useEffect(() => {
-    if (id) {
-      dispatch(fetchDiagnosticById(id))
-        .unwrap()
-        .then(result => {
-          if (result.stats) setStats(result.stats);
-          if (result.userInteractions) setUserInteractions(result.userInteractions);
-        })
-        .catch(error => console.error('Error fetching diagnostic:', error));
-    }
-  }, [id, dispatch]);
-
-  // Actions d'interaction
-  const handleLike = () => {
-    dispatch(likeDiagnostic(id))
-      .unwrap()
-      .then(result => {
-        // Mise à jour des stats locales
-        setStats(prev => ({
-          ...prev,
-          likes: userInteractions.like ? prev.likes - 1 : prev.likes + 1,
-          dislikes: userInteractions.dislike ? prev.dislikes - 1 : prev.dislikes
-        }));
-        setUserInteractions(prev => ({
-          ...prev,
-          like: !prev.like,
-          dislike: false
-        }));
-      });
-  };
-
-  const handleDislike = () => {
-    dispatch(dislikeDiagnostic(id))
-      .unwrap()
-      .then(result => {
-        setStats(prev => ({
-          ...prev,
-          dislikes: userInteractions.dislike ? prev.dislikes - 1 : prev.dislikes + 1,
-          likes: userInteractions.like ? prev.likes - 1 : prev.likes
-        }));
-        setUserInteractions(prev => ({
-          ...prev,
-          dislike: !prev.dislike,
-          like: false
-        }));
-      });
-  };
-
-  const handleFavorite = () => {
-    dispatch(favoriteDiagnostic(id))
-      .unwrap()
-      .then(result => {
-        setStats(prev => ({
-          ...prev,
-          favorites: userInteractions.favorite ? prev.favorites - 1 : prev.favorites + 1
-        }));
-        setUserInteractions(prev => ({
-          ...prev,
-          favorite: !prev.favorite
-        }));
-      });
-  };
-
-  const handleShare = async () => {
-    try {
-      const result = await Share.share({
-        message: `Découvrez le diagnostic "${currentDiagnostic?.title}" avec un score de ${currentDiagnostic?.score}%!`,
-        title: currentDiagnostic?.title
-      });
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de partager le contenu');
-    }
-  };
-
-  const handleEdit = () => {
-    navigation.navigate('EditDiagnostic', { id });
-  };
-
-  const togglePublic = () => {
-    if (currentDiagnostic) {
-      dispatch(updateDiagnostic({ 
-        id: currentDiagnostic.id, 
-        data: { 
-          title: currentDiagnostic.title,
-          isPublic: !currentDiagnostic.isPublic 
-        }
-      }))
-      .unwrap()
-      .then(() => {
-        Alert.alert('Succès', `Diagnostic marqué comme ${currentDiagnostic.isPublic ? 'privé' : 'public'}`);
-      });
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString().substring(0, 5);
-  };
-
-  const getScoreColor = (score) => {
-    if (score >= 80) return '#10B981';
-    if (score >= 60) return '#14B8A6';
-    if (score >= 40) return '#F59E0B';
-    if (score >= 20) return '#F97316';
-    return '#EF4444';
-  };
-
-  if (isLoading || !currentDiagnostic) {
-    return (
-      <View style={[styles.container, {justifyContent: 'center', alignItems: 'center'}]}>
-        <Text>Chargement...</Text>
-      </View>
-    );
-  }
-
-  const scoreColor = getScoreColor(currentDiagnostic.score);
-
+  // Définition des styles au début
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.colors.background,
     },
     contentContainer: {
-      padding: isMobile ? theme.spacing.md : theme.spacing.lg,
+      padding: isMobile ? 16 : 24,
+      paddingBottom: 32,
     },
     header: {
-      marginBottom: theme.spacing.lg,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: 24,
+    },
+    headerContent: {
+      flex: 1,
     },
     title: {
       fontSize: 24,
@@ -165,6 +53,7 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
       marginVertical: 16,
       padding: 16,
       borderRadius: 8,
+      elevation: 2,
     },
     scoreHeader: {
       flexDirection: 'row',
@@ -179,12 +68,17 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
     scoreValue: {
       fontSize: 36,
       fontWeight: 'bold',
-      color: scoreColor,
+    },
+    stressLevel: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginTop: 8,
     },
     recommendationsCard: {
       marginVertical: 16,
       padding: 16,
       borderRadius: 8,
+      elevation: 2,
     },
     recommendationsTitle: {
       fontSize: 18,
@@ -198,29 +92,6 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
     divider: {
       marginVertical: 16,
     },
-    interactionsCard: {
-      marginVertical: 16,
-      padding: 16,
-      borderRadius: 8,
-    },
-    interactionsTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      marginBottom: 12,
-    },
-    interactionsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      marginVertical: 8,
-    },
-    interactionItem: {
-      alignItems: 'center',
-    },
-    interactionCount: {
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginTop: 4,
-    },
     actionsContainer: {
       flexDirection: 'row',
       justifyContent: 'space-around',
@@ -230,119 +101,286 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
       flex: 1,
       marginHorizontal: 4,
     },
+    eventsContainer: {
+      marginVertical: 16,
+      elevation: 2,
+      borderRadius: 8,
+    },
+    eventItem: {
+      flexDirection: 'row',
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F3F4F6',
+    },
+    eventText: {
+      flex: 1,
+      fontSize: 14,
+    },
+    deleteButtonContainer: {
+      marginTop: 24,
+      marginBottom: 16,
+    },
+    deleteButton: {
+      height: 50,
+      backgroundColor: '#FF5252',
+      borderRadius: 8,
+    },
+    actionButton: {
+      borderRadius: 8,
+      height: 48,
+    },
   });
+  
+  useEffect(() => {
+    if (id) {
+      dispatch(fetchDiagnosticById(id));
+    }
+  }, [id, dispatch]);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getScoreColor = (score) => {
+    if (score < 150) return '#10B981'; // Faible risque - vert
+    if (score < 300) return '#F59E0B'; // Risque modéré - orange
+    return '#EF4444'; // Risque élevé - rouge
+  };
+
+  const getStressLevelText = (score) => {
+    if (score < 150) return "Faible risque de stress";
+    if (score < 300) return "Risque modéré de stress";
+    return "Risque élevé de stress";
+  };
+
+  const handleShare = async () => {
+    if (!currentDiagnostic) return;
+    
+    try {
+      const result = await Share.share({
+        message: `Mon score sur l'échelle de stress Holmes-Rahe est de ${currentDiagnostic.score} points (${getStressLevelText(currentDiagnostic.score)}).`,
+        title: 'Résultat du test de stress',
+      });
+    } catch (error) {
+      console.error("Erreur lors du partage:", error);
+    }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      "Supprimer ce diagnostic",
+      "Êtes-vous sûr de vouloir supprimer ce diagnostic de stress ? Cette action est irréversible.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive",
+          onPress: () => {
+            if (currentDiagnostic && currentDiagnostic.id) {
+              dispatch(deleteDiagnostic(currentDiagnostic.id))
+                .unwrap()
+                .then(() => {
+                  // Utiliser une navigation plus explicite qui fonctionne mieux sur le web
+                  navigation.reset({
+                    index: 0,
+                    routes: [
+                      { 
+                        name: 'Main',
+                        state: {
+                          routes: [
+                            {
+                              name: 'Diagnostic'
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                  });
+                })
+                .catch(error => {
+                  Alert.alert(
+                    "Erreur", 
+                    "Impossible de supprimer ce diagnostic: " + (error.message || "Erreur inconnue")
+                  );
+                });
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  if (isLoading || !currentDiagnostic) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Chargement des résultats...</Text>
+      </View>
+    );
+  }
+
+  // Événements Holmes-Rahe avec leur score pour référence
+  const holmesRaheEvents = [
+    { id: 1, event: "Décès d'un conjoint", score: 100 },
+    { id: 2, event: "Divorce", score: 73 },
+    { id: 3, event: "Séparation conjugale", score: 65 },
+    { id: 4, event: "Emprisonnement", score: 63 },
+    { id: 5, event: "Décès d'un proche parent", score: 63 },
+    { id: 6, event: "Blessure ou maladie personnelle", score: 53 },
+    { id: 7, event: "Mariage", score: 50 },
+    { id: 8, event: "Licenciement", score: 47 },
+    { id: 9, event: "Réconciliation conjugale", score: 45 },
+    { id: 10, event: "Retraite", score: 45 },
+    { id: 11, event: "Changement dans la santé d'un membre de la famille", score: 44 },
+    { id: 12, event: "Grossesse", score: 40 },
+    { id: 13, event: "Difficultés sexuelles", score: 39 },
+    { id: 14, event: "Arrivée d'un nouveau membre dans la famille", score: 39 },
+    { id: 15, event: "Réajustement professionnel", score: 39 },
+    { id: 16, event: "Changement de situation financière", score: 38 },
+    { id: 17, event: "Décès d'un ami proche", score: 37 },
+    { id: 18, event: "Changement de métier", score: 36 },
+    { id: 19, event: "Changement dans les disputes avec le conjoint", score: 35 },
+    { id: 20, event: "Prêt ou hypothèque important", score: 31 },
+    { id: 21, event: "Saisie d'hypothèque ou de prêt", score: 30 },
+    { id: 22, event: "Changement de responsabilités au travail", score: 29 },
+    { id: 23, event: "Départ d'un enfant du foyer", score: 29 },
+    { id: 24, event: "Problèmes avec la belle-famille", score: 29 },
+    { id: 25, event: "Réussite personnelle exceptionnelle", score: 28 },
+    { id: 26, event: "Conjoint commençant ou arrêtant de travailler", score: 26 },
+    { id: 27, event: "Début ou fin d'études", score: 26 },
+    { id: 28, event: "Changement de conditions de vie", score: 25 },
+    { id: 29, event: "Révision des habitudes personnelles", score: 24 },
+    { id: 30, event: "Difficultés avec un supérieur", score: 23 },
+    { id: 31, event: "Changement d'horaires ou de conditions de travail", score: 20 },
+    { id: 32, event: "Déménagement", score: 20 },
+    { id: 33, event: "Changement d'école", score: 20 },
+    { id: 34, event: "Changement de loisirs", score: 19 },
+    { id: 35, event: "Changement d'activités religieuses", score: 19 },
+    { id: 36, event: "Changement d'activités sociales", score: 18 },
+    { id: 37, event: "Prêt ou hypothèque modéré", score: 17 },
+    { id: 38, event: "Changement dans les habitudes de sommeil", score: 16 },
+    { id: 39, event: "Changement dans les réunions familiales", score: 15 },
+    { id: 40, event: "Changement dans les habitudes alimentaires", score: 15 },
+    { id: 41, event: "Vacances", score: 13 },
+    { id: 42, event: "Noël", score: 12 },
+    { id: 43, event: "Infractions mineures à la loi", score: 11 }
+  ];
+
+  // Récupérer les événements sélectionnés
+  const selectedEvents = currentDiagnostic.responses ? 
+    Object.entries(currentDiagnostic.responses)
+      .filter(([key, value]) => value === 1 || value === true)
+      .map(([key]) => holmesRaheEvents.find(e => e.id === parseInt(key)))
+      .filter(event => event !== undefined) : [];
+  
+  // On récupère la couleur après avoir vérifié que currentDiagnostic existe
+  const scoreColor = getScoreColor(currentDiagnostic.score);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>{currentDiagnostic.title}</Text>
-        <View style={styles.metadata}>
-          <Text style={styles.metaItem}>
-            Complété le {formatDate(currentDiagnostic.completedAt)}
-          </Text>
-          <Text style={styles.metaItem}>
-            {currentDiagnostic.isPublic ? 'Public' : 'Privé'}
-          </Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.title}>{currentDiagnostic.title}</Text>
+          <View style={styles.metadata}>
+            <Text style={styles.metaItem}>
+              Date: {formatDate(currentDiagnostic.completedAt)}
+            </Text>
+          </View>
         </View>
+        <IconButton
+          icon="arrow-left"
+          size={24}
+          onPress={() => navigation.goBack()}
+        />
       </View>
 
-      <Card style={styles.scoreCard}>
+      <Card style={styles.scoreCard} elevation={2}>
         <Card.Content>
           <View style={styles.scoreHeader}>
-            <Text style={styles.scoreTitle}>Score global</Text>
-            <Text style={styles.scoreValue}>{currentDiagnostic.score}%</Text>
+            <Text style={styles.scoreTitle}>Score de stress Holmes-Rahe</Text>
+            <Text style={[styles.scoreValue, { color: scoreColor }]}>{currentDiagnostic.score}</Text>
           </View>
           <ProgressBar
-            progress={currentDiagnostic.score / 100}
+            progress={Math.min(currentDiagnostic.score / 400, 1)}
             color={scoreColor}
             style={{ height: 10, borderRadius: 5 }}
           />
+          <Text style={[styles.stressLevel, { color: scoreColor }]}>
+            {getStressLevelText(currentDiagnostic.score)}
+          </Text>
         </Card.Content>
       </Card>
 
-      <Card style={styles.recommendationsCard}>
+      <Card style={styles.recommendationsCard} elevation={2}>
         <Card.Content>
           <Text style={styles.recommendationsTitle}>Recommandations</Text>
           <Text style={styles.recommendationsText}>
-            {currentDiagnostic.recommendations}
+            {currentDiagnostic.recommendations || "Aucune recommandation disponible."}
           </Text>
         </Card.Content>
       </Card>
 
       <Divider style={styles.divider} />
 
-      <Card style={styles.interactionsCard}>
+      <Card style={styles.eventsContainer}>
         <Card.Content>
-          <Text style={styles.interactionsTitle}>Interactions</Text>
-          <View style={styles.interactionsRow}>
-            <View style={styles.interactionItem}>
-              <IconButton
-                icon="thumb-up"
-                iconColor={userInteractions.like ? theme.colors.primary : theme.colors.placeholder}
-                size={24}
-                onPress={handleLike}
-              />
-              <Text style={styles.interactionCount}>{stats.likes}</Text>
-            </View>
-            <View style={styles.interactionItem}>
-              <IconButton
-                icon="thumb-down"
-                iconColor={userInteractions.dislike ? theme.colors.error : theme.colors.placeholder}
-                size={24}
-                onPress={handleDislike}
-              />
-              <Text style={styles.interactionCount}>{stats.dislikes}</Text>
-            </View>
-            <View style={styles.interactionItem}>
-              <IconButton
-                icon="eye"
-                iconColor={theme.colors.placeholder}
-                size={24}
-              />
-              <Text style={styles.interactionCount}>{stats.views}</Text>
-            </View>
-            <View style={styles.interactionItem}>
-              <IconButton
-                icon="heart"
-                iconColor={userInteractions.favorite ? theme.colors.error : theme.colors.placeholder}
-                size={24}
-                onPress={handleFavorite}
-              />
-              <Text style={styles.interactionCount}>{stats.favorites}</Text>
-            </View>
-          </View>
+          <Text style={styles.recommendationsTitle}>
+            Événements de vie vécus (12 derniers mois)
+          </Text>
+          {selectedEvents.length > 0 ? (
+            selectedEvents.map(event => (
+              <View key={event.id} style={styles.eventItem}>
+                <Text style={styles.eventText}>{event.event}</Text>
+                <Text style={{ color: scoreColor, fontWeight: 'bold' }}>{event.score}</Text>
+              </View>
+            ))
+          ) : (
+            <Text>Aucun événement sélectionné.</Text>
+          )}
         </Card.Content>
       </Card>
 
       <View style={styles.actionsContainer}>
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            icon="pencil"
-            onPress={handleEdit}
-          >
-            Modifier
-          </Button>
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
-            icon="share"
-            onPress={handleShare}
-          >
-            Partager
-          </Button>
-        </View>
+        <Button 
+          mode="contained" 
+          icon="share-variant"
+          style={[styles.buttonContainer, styles.actionButton]}
+          onPress={handleShare}
+        >
+          Partager
+        </Button>
+        <Button 
+          mode="outlined" 
+          icon="refresh"
+          style={[styles.buttonContainer, styles.actionButton]}
+          onPress={() => navigation.navigate('HolmesRaheDiagnostic')}
+        >
+          Refaire le test
+        </Button>
       </View>
-
-      <Button
-        mode="outlined"
-        icon={currentDiagnostic.isPublic ? "eye-off" : "eye"}
-        onPress={togglePublic}
-        style={{ marginVertical: 8 }}
-      >
-        {currentDiagnostic.isPublic ? "Rendre privé" : "Rendre public"}
-      </Button>
+      
+      <View style={styles.deleteButtonContainer}>
+        <Button 
+          mode="contained" 
+          icon="delete"
+          buttonColor="#FF5252"
+          textColor="white"
+          style={styles.deleteButton}
+          onPress={handleDelete}
+        >
+          Supprimer ce diagnostic
+        </Button>
+      </View>
     </ScrollView>
   );
 };

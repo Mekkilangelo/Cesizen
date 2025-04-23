@@ -25,5 +25,8 @@
     "mysql2": "^3.13.0",
     "nodemon": "^3.1.9",
     "sequelize": "^6.37.6"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.0"
   }
 }

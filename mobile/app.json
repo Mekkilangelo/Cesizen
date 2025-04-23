@@ -4,9 +4,9 @@
     "slug": "cesi-zen",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./src/assets/icon.png",
+    "icon": "./src/assets/favicon.png",
     "splash": {
-      "image": "./src/assets/splash.png",
+      "image": "./src/assets/favicon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,12 +21,14 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/adaptive-icon.png",
+        "foregroundImage": "./src/assets/favicon.png",
         "backgroundColor": "#FFFFFF"
       }
     },
     "web": {
       "favicon": "./src/assets/favicon.png"
-    }
+    },
+    "sdkVersion": "52.0.0",
+    "newArchEnabled": true
   }
 }

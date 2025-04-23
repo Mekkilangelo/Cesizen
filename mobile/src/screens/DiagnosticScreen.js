@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, FAB, Searchbar, useTheme, Button } from 'react-native-paper';
+import { Text, FAB, Searchbar, useTheme, Button, Card } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { fetchRecentDiagnostics } from '../store/diagnosticSlice';
@@ -31,19 +31,7 @@ const DiagnosticScreen = () => {
   };
 
   const handleNewDiagnostic = () => {
-    // Navigation vers l'écran de création de diagnostic
-    // navigation.navigate('CreateDiagnostic');
-    alert('Navigation vers la création de diagnostic');
-  };
-
-  const handleFavorite = (id) => {
-    // Logique pour marquer un diagnostic comme favori
-    alert(`Favoriser le diagnostic ${id}`);
-  };
-
-  const handleShare = (id) => {
-    // Logique pour partager un diagnostic
-    alert(`Partager le diagnostic ${id}`);
+    navigation.navigate('HolmesRaheDiagnostic');
   };
 
   const filteredDiagnostics = searchQuery
@@ -74,6 +62,7 @@ const DiagnosticScreen = () => {
       justifyContent: 'center',
       alignItems: 'center',
       padding: theme.spacing.xl,
+      marginTop: 60,
     },
     emptyText: {
       fontSize: theme.fontSize.title,
@@ -87,6 +76,19 @@ const DiagnosticScreen = () => {
       textAlign: 'center',
       marginBottom: theme.spacing.xl,
     },
+    infoCard: {
+      margin: theme.spacing.md,
+      marginBottom: theme.spacing.lg,
+    },
+    infoCardTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      marginBottom: 8,
+    },
+    infoCardContent: {
+      fontSize: 14,
+      lineHeight: 20,
+    },
     fab: {
       position: 'absolute',
       margin: theme.spacing.lg,
@@ -94,40 +96,28 @@ const DiagnosticScreen = () => {
       bottom: 0,
       backgroundColor: theme.colors.primary,
     },
+    actionButton: {
+      marginVertical: theme.spacing.md,
+      marginHorizontal: theme.spacing.md,
+    },
   });
 
-  // Simulons des données pour le développement
-  const mockDiagnostics = latestDiagnostics.length > 0 ? latestDiagnostics : [
-    {
-      id: 1,
-      title: 'Diagnostic Entreprise 2023',
-      score: 75,
-      completedAt: new Date().toISOString(),
-      recommendations: 'Votre entreprise performe bien, mais il y a des améliorations possibles...',
-      isPublic: true,
-      isFavorite: true,
-    },
-    {
-      id: 2,
-      title: 'Audit Sécurité',
-      score: 45,
-      completedAt: new Date(Date.now() - 86400000).toISOString(),
-      recommendations: 'Des mesures urgentes sont nécessaires pour améliorer la sécurité...',
-      isPublic: false,
-      isFavorite: false,
-    }
-  ];
-
   const renderItem = ({ item }) => (
-    <DiagnosticCard 
-      diagnostic={item} 
-      onFavorite={handleFavorite}
-      onShare={handleShare}
-    />
+    <DiagnosticCard diagnostic={item} />
   );
 
   return (
     <View style={styles.container}>
+      <Card style={styles.infoCard}>
+        <Card.Content>
+          <Text style={styles.infoCardTitle}>Échelle de stress de Holmes et Rahe</Text>
+          <Text style={styles.infoCardContent}>
+            Cette échelle évalue votre niveau de stress en fonction des événements majeurs survenus dans votre vie au cours des 12 derniers mois. 
+            Plus votre score est élevé, plus votre risque de problèmes de santé liés au stress est important.
+          </Text>
+        </Card.Content>
+      </Card>
+
       <View style={styles.searchContainer}>
         <Searchbar
           placeholder="Rechercher un diagnostic..."
@@ -139,7 +129,7 @@ const DiagnosticScreen = () => {
       </View>
 
       <FlatList
-        data={mockDiagnostics}
+        data={filteredDiagnostics}
         renderItem={renderItem}
         keyExtractor={item => item.id.toString()}
         contentContainerStyle={styles.listContainer}
@@ -150,14 +140,8 @@ const DiagnosticScreen = () => {
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Aucun diagnostic</Text>
             <Text style={styles.subText}>
-              Créez votre premier diagnostic pour évaluer votre entreprise
+              Créez votre premier test de stress pour évaluer votre niveau de stress 
             </Text>
-            <Button 
-              mode="contained" 
-              onPress={handleNewDiagnostic}
-            >
-              Créer un diagnostic
-            </Button>
           </View>
         }
       />
@@ -166,6 +150,7 @@ const DiagnosticScreen = () => {
         style={styles.fab}
         icon="plus"
         onPress={handleNewDiagnostic}
+        label="Nouveau test"
       />
     </View>
   );

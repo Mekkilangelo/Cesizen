@@ -4,11 +4,13 @@ const contentController = require('../controller/contentController');
 const { verifyToken } = require('../middleware/auth');
 
 // Routes publiques
+router.get('/', contentController.getPublicContents); // Ajout de cette route
 router.get('/public', contentController.getPublicContents);
 router.get('/:id', contentController.getContent);
 
 // Routes protégées (nécessitent une authentification)
 router.post('/', verifyToken, contentController.createContent);
+router.get('/user', verifyToken, contentController.getUserContents); // Ajout de cette route
 router.get('/user/me', verifyToken, contentController.getUserContents);
 router.put('/:id', verifyToken, contentController.updateContent);
 router.delete('/:id', verifyToken, contentController.deleteContent);

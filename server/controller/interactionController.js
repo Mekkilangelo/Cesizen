@@ -334,3 +334,75 @@ exports.getDiagnosticInteractionStats = async (req, res) => {
     });
   }
 };
+
+// Récupérer les interactions d'un utilisateur pour un contenu spécifique
+exports.getUserContentInteractions = async (req, res) => {
+  try {
+    const { contentId } = req.params;
+    const userId = req.user.id;
+
+    // Vérifier que le contenu existe
+    const content = await Content.findByPk(contentId);
+    if (!content) {
+      return res.status(404).json({ success: false, message: 'Contenu non trouvé' });
+    }
+
+    // Récupérer les interactions de l'utilisateur
+    const interactions = await ContentInteraction.findAll({
+      where: { userId, contentId }
+    });
+    
+    // Transformer les interactions en objet plus facile à utiliser
+    const userInteractions = {};
+    interactions.forEach(interaction => {
+      userInteractions[interaction.type] = true;
+    });
+
+    return res.status(200).json({
+      success: true,
+      userInteractions
+    });
+  } catch (error) {
+    console.error(`Erreur lors de la récupération des interactions utilisateur: ${error}`);
+    return res.status(500).json({
+      success: false,
+      message: `Erreur lors de la récupération des interactions utilisateur: ${error.message}`
+    });
+  }
+};
+
+// Récupérer les interactions d'un utilisateur pour un diagnostic spécifique
+exports.getUserDiagnosticInteractions = async (req, res) => {
+  try {
+    const { diagnosticId } = req.params;
+    const userId = req.user.id;
+
+    // Vérifier que le diagnostic existe
+    const diagnostic = await Diagnostic.findByPk(diagnosticId);
+    if (!diagnostic) {
+      return res.status(404).json({ success: false, message: 'Diagnostic non trouvé' });
+    }
+
+    // Récupérer les interactions de l'utilisateur
+    const interactions = await DiagnosticInteraction.findAll({
+      where: { userId, diagnosticId }
+    });
+    
+    // Transformer les interactions en objet plus facile à utiliser
+    const userInteractions = {};
+    interactions.forEach(interaction => {
+      userInteractions[interaction.type] = true;
+    });
+
+    return res.status(200).json({
+      success: true,
+      userInteractions
+    });
+  } catch (error) {
+    console.error(`Erreur lors de la récupération des interactions utilisateur: ${error}`);
+    return res.status(500).json({
+      success: false,
+      message: `Erreur lors de la récupération des interactions utilisateur: ${error.message}`
+    });
+  }
+};

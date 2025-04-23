@@ -1,27 +1,64 @@
 const { Diagnostic, User, Question, DiagnosticInteraction } = require('../models');
 const { Op } = require('sequelize');
 
+// Déterminer le niveau de risque en fonction du score
+const getRiskLevel = (score) => {
+  if (score < 150) return 'low';
+  if (score < 300) return 'moderate';
+  return 'high';
+};
+
+// Générer des recommandations basées sur le score
+const generateRecommendations = (score, isHolmesRahe = false) => {
+  if (isHolmesRahe) {
+    if (score >= 300) {
+      return "Risque élevé de stress (80% de risque de problèmes de santé liés au stress). Il est fortement recommandé de consulter un professionnel de santé et de mettre en place des stratégies de gestion du stress, comme la méditation, l'exercice régulier et la réduction des engagements non essentiels.";
+    } else if (score >= 150) {
+      return "Risque modéré de stress (50% de risque de problèmes de santé liés au stress). Envisagez d'intégrer des techniques de relaxation dans votre routine quotidienne, d'améliorer votre sommeil et de partager vos préoccupations avec des personnes de confiance.";
+    } else {
+      return "Faible risque de stress. Continuez à prendre soin de votre bien-être et à maintenir un équilibre entre vie professionnelle et personnelle. La pratique régulière d'activités qui vous plaisent contribuera à maintenir ce faible niveau de stress.";
+    }
+  } else {
+    if (score >= 80) {
+      return "Excellent résultat ! Votre situation est très bonne. Continuez ainsi et envisagez d'optimiser davantage certains aspects.";
+    } else if (score >= 60) {
+      return "Bon résultat. Votre situation est satisfaisante, mais il y a quelques points à améliorer pour atteindre l'excellence.";
+    } else if (score >= 40) {
+      return "Résultat moyen. Plusieurs aspects nécessitent votre attention. Concentrez-vous sur les domaines les plus faibles identifiés dans le diagnostic.";
+    } else if (score >= 20) {
+      return "Résultat préoccupant. De nombreux aspects nécessitent des améliorations significatives. Nous vous recommandons d'établir un plan d'action prioritaire.";
+    } else {
+      return "Résultat critique. Une refonte complète de votre approche est nécessaire. Contactez un expert pour vous aider à établir un plan de redressement.";
+    }
+  }
+};
+
 // Contrôleur pour créer un nouveau diagnostic
 exports.createDiagnostic = async (req, res) => {
   try {
-    const { title, responses, isPublic } = req.body;
+    const { title, responses, isPublic, rawScore, isHolmesRahe = false } = req.body;
     const userId = req.user.id;
 
-    // Calculer le score en fonction des réponses
-    const score = await calculateScore(responses);
+    let score;
+    if (isHolmesRahe && rawScore !== undefined) {
+      score = rawScore;
+    } else {
+      score = await calculateScore(responses);
+    }
 
-    // Générer des recommandations basées sur le score
-    const recommendations = generateRecommendations(score);
+    const riskLevel = getRiskLevel(score);
+    const recommendations = generateRecommendations(score, isHolmesRahe);
 
-    // Créer le diagnostic
     const diagnostic = await Diagnostic.create({
       userId,
       title,
       score,
       responses,
+      riskLevel,
       recommendations,
       isPublic: isPublic || false,
-      completedAt: new Date()
+      completedAt: new Date(),
+      diagnosticType: isHolmesRahe ? 'holmes-rahe' : 'general'
     });
 
     return res.status(201).json({
@@ -84,7 +121,6 @@ exports.getDiagnostic = async (req, res) => {
       });
     }
 
-    // Enregistrer une vue
     const existingView = await DiagnosticInteraction.findOne({
       where: { userId, diagnosticId: id, type: 'view' }
     });
@@ -97,7 +133,6 @@ exports.getDiagnostic = async (req, res) => {
       });
     }
     
-    // Récupérer les statistiques d'interactions
     const stats = {
       likes: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'like' } }),
       dislikes: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'dislike' } }),
@@ -105,7 +140,6 @@ exports.getDiagnostic = async (req, res) => {
       favorites: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'favorite' } })
     };
     
-    // Récupérer les interactions de l'utilisateur
     const userInteractions = {};
     const interactions = await DiagnosticInteraction.findAll({
       where: { userId, diagnosticId: id }
@@ -135,7 +169,6 @@ exports.updateDiagnostic = async (req, res) => {
     const { title, isPublic } = req.body;
     const userId = req.user.id;
 
-    // Vérifier si le diagnostic existe et appartient à l'utilisateur
     const diagnostic = await Diagnostic.findOne({
       where: { id, userId }
     });
@@ -146,7 +179,6 @@ exports.updateDiagnostic = async (req, res) => {
       });
     }
 
-    // Mettre à jour le diagnostic
     await diagnostic.update({ title, isPublic });
 
     return res.status(200).json({
@@ -166,20 +198,23 @@ exports.deleteDiagnostic = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+    
+    console.log(`Tentative de suppression du diagnostic ID: ${id} par utilisateur ID: ${userId}`);
 
-    // Vérifier si le diagnostic existe et appartient à l'utilisateur
     const diagnostic = await Diagnostic.findOne({
       where: { id, userId }
     });
 
     if (!diagnostic) {
+      console.log(`Diagnostic non trouvé ou accès non autorisé. ID: ${id}, userID: ${userId}`);
       return res.status(404).json({
         message: 'Diagnostic non trouvé ou accès non autorisé'
       });
     }
 
-    // Supprimer le diagnostic
+    console.log(`Diagnostic trouvé, suppression en cours...`);
     await diagnostic.destroy();
+    console.log(`Diagnostic supprimé avec succès`);
 
     return res.status(200).json({
       message: 'Diagnostic supprimé avec succès'
@@ -187,7 +222,7 @@ exports.deleteDiagnostic = async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la suppression du diagnostic:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la suppression du diagnostic'
+      message: 'Erreur serveur lors de la suppression du diagnostic: ' + error.message
     });
   }
 };
@@ -232,7 +267,6 @@ exports.getFavoriteDiagnostics = async (req, res) => {
     const offset = (page - 1) * limit;
     const userId = req.user.id;
 
-    // Récupérer tous les IDs de diagnostics favoris
     const favorites = await DiagnosticInteraction.findAll({
       where: { userId, type: 'favorite' },
       attributes: ['diagnosticId']
@@ -275,10 +309,8 @@ exports.getFavoriteDiagnostics = async (req, res) => {
   }
 };
 
-// Fonction utilitaire pour calculer le score en fonction des réponses
 const calculateScore = async (responses) => {
   try {
-    // Récupérer toutes les questions pour obtenir leurs poids
     const questions = await Question.findAll({
       where: {
         id: {
@@ -287,7 +319,6 @@ const calculateScore = async (responses) => {
       }
     });
 
-    // Calculer le score total
     let totalScore = 0;
     let maxPossibleScore = 0;
 
@@ -295,45 +326,25 @@ const calculateScore = async (responses) => {
       const response = responses[question.id];
       const weight = question.weight || 1;
       
-      // Logique de calcul du score en fonction du type de question
       if (question.type === 'scale') {
-        // Pour les questions à échelle, utiliser la valeur directement
         totalScore += (response * weight);
-        maxPossibleScore += (10 * weight); // Supposons une échelle de 1 à 10
+        maxPossibleScore += (10 * weight);
       } else if (question.type === 'multiple_choice' || question.type === 'single_choice') {
-        // Pour les questions à choix, chaque option a une valeur
         const options = question.options || [];
         const selectedOption = options.find(opt => opt.value === response);
         
         if (selectedOption && selectedOption.score) {
           totalScore += (selectedOption.score * weight);
           
-          // Trouver le score maximum possible pour cette question
           const maxOptionScore = Math.max(...options.map(opt => opt.score || 0));
           maxPossibleScore += (maxOptionScore * weight);
         }
       }
     });
 
-    // Normaliser le score sur 100
     return Math.round((totalScore / maxPossibleScore) * 100) || 0;
   } catch (error) {
     console.error('Erreur lors du calcul du score:', error);
     return 0;
-  }
-};
-
-// Fonction utilitaire pour générer des recommandations basées sur le score
-const generateRecommendations = (score) => {
-  if (score >= 80) {
-    return "Excellent résultat ! Votre situation est très bonne. Continuez ainsi et envisagez d'optimiser davantage certains aspects.";
-  } else if (score >= 60) {
-    return "Bon résultat. Votre situation est satisfaisante, mais il y a quelques points à améliorer pour atteindre l'excellence.";
-  } else if (score >= 40) {
-    return "Résultat moyen. Plusieurs aspects nécessitent votre attention. Concentrez-vous sur les domaines les plus faibles identifiés dans le diagnostic.";
-  } else if (score >= 20) {
-    return "Résultat préoccupant. De nombreux aspects nécessitent des améliorations significatives. Nous vous recommandons d'établir un plan d'action prioritaire.";
-  } else {
-    return "Résultat critique. Une refonte complète de votre approche est nécessaire. Contactez un expert pour vous aider à établir un plan de redressement.";
   }
 };

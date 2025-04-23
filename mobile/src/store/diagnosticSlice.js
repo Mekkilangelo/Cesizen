@@ -14,25 +14,31 @@ export const fetchRecentDiagnostics = createAsyncThunk(
   }
 );
 
+// Alias pour la compatibilité avec les tests - même fonction, nom différent
+export const fetchDiagnostics = fetchRecentDiagnostics;
+
 // Récupérer un diagnostic spécifique
 export const fetchDiagnosticById = createAsyncThunk(
   'diagnostics/fetchById',
   async (id, { rejectWithValue }) => {
     try {
       const response = await apiClient.get(`/diagnostics/${id}`);
-      return response.data.diagnostic;
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
 
-// Créer un nouveau diagnostic
+// Créer un nouveau diagnostic Holmes-Rahe
 export const createDiagnostic = createAsyncThunk(
   'diagnostics/create',
   async (diagnosticData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/diagnostics', diagnosticData);
+      const response = await apiClient.post('/diagnostics', {
+        ...diagnosticData,
+        rawScore: diagnosticData.rawScore
+      });
       return response.data.diagnostic;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });
@@ -49,6 +55,28 @@ export const updateDiagnostic = createAsyncThunk(
       return response.data.diagnostic;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
+// Améliorer l'action deleteDiagnostic pour mieux gérer les erreurs
+
+export const deleteDiagnostic = createAsyncThunk(
+  'diagnostics/delete',
+  async (id, { rejectWithValue }) => {
+    try {
+      console.log(`Envoi de la requête DELETE à /diagnostics/${id}`);
+      const response = await apiClient.delete(`/diagnostics/${id}`);
+      console.log('Réponse de suppression:', response.data);
+      return id;
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      // Afficher plus de détails sur l'erreur
+      if (error.response) {
+        console.error('Données d\'erreur:', error.response.data);
+        console.error('Status:', error.response.status);
+      }
+      return rejectWithValue(error.response?.data || { message: error.message || 'Erreur inconnue' });
     }
   }
 );
@@ -86,7 +114,7 @@ const diagnosticSlice = createSlice({
       })
       .addCase(fetchRecentDiagnostics.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la récupération des diagnostics';
+        state.error = action.payload?.message || 'Erreur lors de la récupération des tests de stress';
       })
       
       // Récupération d'un diagnostic par ID
@@ -96,11 +124,11 @@ const diagnosticSlice = createSlice({
       })
       .addCase(fetchDiagnosticById.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentDiagnostic = action.payload;
+        state.currentDiagnostic = action.payload.diagnostic;
       })
       .addCase(fetchDiagnosticById.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la récupération du diagnostic';
+        state.error = action.payload?.message || 'Erreur lors de la récupération du test de stress';
       })
       
       // Création d'un diagnostic
@@ -115,7 +143,7 @@ const diagnosticSlice = createSlice({
       })
       .addCase(createDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la création du diagnostic';
+        state.error = action.payload?.message || 'Erreur lors de la création du test de stress';
       })
       
       // Mise à jour d'un diagnostic
@@ -135,7 +163,30 @@ const diagnosticSlice = createSlice({
       })
       .addCase(updateDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la mise à jour du diagnostic';
+        state.error = action.payload?.message || 'Erreur lors de la mise à jour du test de stress';
+      })
+      
+      // Suppression d'un diagnostic
+      .addCase(deleteDiagnostic.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteDiagnostic.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Récupérer l'ID du diagnostic supprimé
+        const deletedId = action.payload;
+        // Supprimer de la liste des diagnostics
+        state.latestDiagnostics = state.latestDiagnostics.filter(
+          diagnostic => diagnostic.id !== deletedId
+        );
+        // Réinitialiser le diagnostic actuel s'il a été supprimé
+        if (state.currentDiagnostic && state.currentDiagnostic.id === deletedId) {
+          state.currentDiagnostic = null;
+        }
+      })
+      .addCase(deleteDiagnostic.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || 'Erreur lors de la suppression du diagnostic';
       });
   },
 });

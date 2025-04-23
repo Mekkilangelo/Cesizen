@@ -2,25 +2,37 @@ import React from 'react';
 import { useSelector } from 'react-redux';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform, View, Text } from 'react-native';
+import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // Import des écrans
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
-import ProfileScreen from '../screens/ProfileScreen'; // Importez le ProfileScreen réel
+import ProfileScreen from '../screens/ProfileScreen';
 import DiagnosticScreen from '../screens/DiagnosticScreen';
 import DiagnosticDetailScreen from '../screens/DiagnosticDetailScreen';
+import HolmesRaheDiagnosticScreen from '../screens/HolmesRaheDiagnosticScreen';
 
-// Les écrans principaux - remplacez ces importations par vos propres écrans
-const HomeScreen = () => <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>Accueil</Text></View>;
-const ContentScreen = () => <View style={{flex:1, justifyContent:'center', alignItems:'center'}}><Text>Contenu</Text></View>;
+// Écran d'accueil simple
+const HomeScreen = () => (
+  <View style={{flex:1, justifyContent:'center', alignItems:'center', padding: 20}}>
+    <Text style={{fontSize: 22, fontWeight: 'bold', marginBottom: 20}}>
+      Bienvenue sur CesiZen
+    </Text>
+    <Text style={{textAlign: 'center', lineHeight: 24, marginBottom: 20}}>
+      Cette application vous permet d'évaluer votre niveau de stress selon l'échelle Holmes et Rahe.
+    </Text>
+    <Text style={{textAlign: 'center', lineHeight: 24}}>
+      Accédez à l'onglet "Diagnostics" pour réaliser un test de stress ou consulter vos résultats précédents.
+    </Text>
+  </View>
+);
 
 // Navigation Stack
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Navigation d'authentification simple
+// Navigation d'authentification
 const AuthNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
@@ -34,20 +46,24 @@ const DiagnosticNavigator = () => (
     <Stack.Screen 
       name="DiagnosticsList" 
       component={DiagnosticScreen} 
-      options={{ title: 'Mes Diagnostics', headerShown: false }}
+      options={{ title: 'Tests de stress Holmes-Rahe', headerShown: true }}
     />
     <Stack.Screen 
       name="DiagnosticDetail" 
       component={DiagnosticDetailScreen}
       options={({ route }) => ({ 
-        title: route.params?.title || 'Détail du diagnostic',
-        headerShown: true 
+        title: route.params?.title || 'Résultat du test de stress'
       })}
+    />
+    <Stack.Screen 
+      name="HolmesRaheDiagnostic" 
+      component={HolmesRaheDiagnosticScreen} 
+      options={{ title: "Test de stress Holmes-Rahe" }} 
     />
   </Stack.Navigator>
 );
 
-// Navigation principale simple (Tab Navigator)
+// Navigation principale simplifiée
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -71,26 +87,16 @@ const MainTabNavigator = () => {
         name="Diagnostic" 
         component={DiagnosticNavigator}
         options={{
-          tabBarLabel: 'Diagnostic',
+          tabBarLabel: 'Tests de stress',
           headerShown: false,
           tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="clipboard-check" color={color} size={26} />
-          ),
-        }}
-      />
-      <Tab.Screen 
-        name="Content" 
-        component={ContentScreen}
-        options={{
-          tabBarLabel: 'Contenu',
-          tabBarIcon: ({ color }) => (
-            <MaterialCommunityIcons name="book-open-variant" color={color} size={26} />
+            <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
           ),
         }}
       />
       <Tab.Screen 
         name="Profile" 
-        component={ProfileScreen} // Utilisez le ProfileScreen réel maintenant
+        component={ProfileScreen}
         options={{
           tabBarLabel: 'Profil',
           tabBarIcon: ({ color }) => (
@@ -102,7 +108,7 @@ const MainTabNavigator = () => {
   );
 };
 
-// Navigateur principal ultra simplifié
+// Navigateur principal
 const AppNavigator = () => {
   const { userToken } = useSelector(state => state.auth);
   

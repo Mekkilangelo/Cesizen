@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 // Contrôleur pour créer un nouveau commentaire
 exports.createComment = async (req, res) => {
   try {
-    const { diagnosticId, relatedContent } = req.body;
+    const { diagnosticId, content, text, relatedContent } = req.body;
     const userId = req.user.id;
 
     // Vérifier si le diagnostic existe et est accessible
@@ -24,10 +24,21 @@ exports.createComment = async (req, res) => {
       });
     }
 
+    // S'assurer qu'on a le contenu du commentaire
+    // Accepter soit 'content' soit 'text' comme champ pour le contenu
+    const commentContent = content || text || relatedContent;
+    
+    if (!commentContent) {
+      return res.status(400).json({
+        message: 'Le contenu du commentaire est obligatoire'
+      });
+    }
+
     // Créer le commentaire
     const comment = await Comment.create({
       userId,
       diagnosticId,
+      content: commentContent,
       relatedContent,
       isModerated: false
     });

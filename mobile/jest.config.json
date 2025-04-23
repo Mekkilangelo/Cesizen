@@ -1,0 +1,28 @@
+{
+  "preset": "jest-expo",
+  "transformIgnorePatterns": [
+    "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"
+  ],
+  "setupFilesAfterEnv": [
+    "<rootDir>/jest.setup.js"
+  ],
+  "collectCoverageFrom": [
+    "src/**/*.{js,jsx}",
+    "!src/api/apiClient.js",
+    "!src/config/**",
+    "!src/assets/**"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "statements": 70,
+      "branches": 70,
+      "functions": 70,
+      "lines": 70
+    }
+  },
+  "testPathIgnorePatterns": [
+    "<rootDir>/node_modules/",
+    "<rootDir>/.expo/"
+  ],
+  "testEnvironment": "jsdom"
+}

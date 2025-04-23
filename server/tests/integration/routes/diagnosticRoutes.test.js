@@ -3,6 +3,7 @@ const request = require('supertest');
 const app = require('../../../app');
 const { User, Diagnostic } = require('../../../models');
 const { generateToken } = require('../../../middleware/auth');
+const bcrypt = require('bcrypt');
 
 describe('Diagnostic Routes', () => {
   let token;
@@ -32,6 +33,8 @@ describe('Diagnostic Routes', () => {
       title: 'Test Diagnostic 1',
       score: 75,
       responses: { "1": 8, "2": "option_1" },
+      riskLevel: 'low', // Ajout du champ obligatoire riskLevel
+      recommendations: 'Test recommendations',
       isPublic: true,
       completedAt: new Date()
     });
@@ -49,6 +52,9 @@ describe('Diagnostic Routes', () => {
     const newDiagnostic = {
       title: 'New Test Diagnostic',
       responses: { "1": 7, "2": "option_2", "3": 4 },
+      riskLevel: 'moderate', // Ajout du champ obligatoire riskLevel
+      score: 150,
+      recommendations: 'Test recommendations',
       isPublic: true
     };
     
@@ -63,5 +69,73 @@ describe('Diagnostic Routes', () => {
     
     // Nettoyer le diagnostic créé
     await Diagnostic.destroy({ where: { id: response.body.diagnostic.id } });
+  });
+
+  test('DELETE /api/diagnostics/:id devrait supprimer un diagnostic existant', async () => {
+    // Créer d'abord un diagnostic à supprimer
+    const diagnostic = await Diagnostic.create({
+      userId: userId,
+      title: 'Test pour suppression',
+      score: 150,
+      responses: { "1": true, "5": true },
+      riskLevel: 'moderate',
+      recommendations: 'Test recommendations',
+      isPublic: false
+    });
+    
+    const response = await request(app)
+      .delete(`/api/diagnostics/${diagnostic.id}`)
+      .set('Authorization', `Bearer ${token}`);
+      
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toBe('Diagnostic supprimé avec succès');
+    
+    // Vérifier que le diagnostic a bien été supprimé
+    const deleted = await Diagnostic.findByPk(diagnostic.id);
+    expect(deleted).toBeNull();
+  });
+
+  test('DELETE /api/diagnostics/:id devrait retourner 404 pour un diagnostic inexistant', async () => {
+    const nonExistentId = 999999;
+    
+    const response = await request(app)
+      .delete(`/api/diagnostics/${nonExistentId}`)
+      .set('Authorization', `Bearer ${token}`);
+      
+    expect(response.statusCode).toBe(404);
+  });
+
+  test('DELETE /api/diagnostics/:id devrait interdire la suppression du diagnostic d\'un autre utilisateur', async () => {
+    // Créer un autre utilisateur
+    const otherUser = await User.create({
+      username: 'otheruser',
+      email: 'other@example.com',
+      password: await bcrypt.hash('password123', 10)
+    });
+    
+    // Créer un diagnostic pour cet autre utilisateur
+    const diagnostic = await Diagnostic.create({
+      userId: otherUser.id,
+      title: 'Test d\'un autre utilisateur',
+      score: 120,
+      responses: { "1": true },
+      riskLevel: 'low',
+      recommendations: 'Test',
+      isPublic: true
+    });
+    
+    const response = await request(app)
+      .delete(`/api/diagnostics/${diagnostic.id}`)
+      .set('Authorization', `Bearer ${token}`);
+      
+    expect(response.statusCode).toBe(404);
+    
+    // Vérifier que le diagnostic existe toujours
+    const stillExists = await Diagnostic.findByPk(diagnostic.id);
+    expect(stillExists).not.toBeNull();
+    
+    // Nettoyer
+    await diagnostic.destroy();
+    await otherUser.destroy();
   });
 });

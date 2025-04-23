@@ -1,13 +1,15 @@
 import React from 'react';
-import { StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
-import { Card, Text, Badge, useTheme, IconButton } from 'react-native-paper';
+import { StyleSheet, View, Alert, TouchableOpacity } from 'react-native';
+import { Card, Text, useTheme, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { deleteDiagnostic, fetchRecentDiagnostics } from '../store/diagnosticSlice';
 import useResponsive from '../hooks/useResponsive';
 
-// Carte de diagnostic conçue spécifiquement pour mobile
-const DiagnosticCard = ({ diagnostic, onShare, onFavorite }) => {
+const DiagnosticCard = ({ diagnostic }) => {
   const theme = useTheme();
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const { isMobile } = useResponsive();
   
   const handlePress = () => {
@@ -15,6 +17,39 @@ const DiagnosticCard = ({ diagnostic, onShare, onFavorite }) => {
       id: diagnostic.id,
       title: diagnostic.title
     });
+  };
+
+  const handleDelete = (e) => {
+    // Empêcher la propagation au Card
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    Alert.alert(
+      "Supprimer ce diagnostic",
+      "Êtes-vous sûr de vouloir supprimer ce diagnostic de stress ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive",
+          onPress: () => {
+            console.log("Tentative de suppression de l'ID:", diagnostic.id);
+            dispatch(deleteDiagnostic(diagnostic.id))
+              .unwrap()
+              .then(() => {
+                console.log("Suppression réussie");
+                // Rafraîchir la liste après suppression
+                dispatch(fetchRecentDiagnostics());
+              })
+              .catch(error => {
+                console.error("Erreur de suppression:", error);
+                Alert.alert("Erreur", "Impossible de supprimer ce diagnostic");
+              });
+          }
+        }
+      ]
+    );
   };
 
   // Style adaptatif basé sur la plateforme
@@ -57,46 +92,36 @@ const DiagnosticCard = ({ diagnostic, onShare, onFavorite }) => {
       color: theme.colors.placeholder,
       marginBottom: theme.spacing.sm,
     },
-    recommendations: {
+    stressLevel: {
       fontSize: theme.fontSize.body,
-      color: theme.colors.text,
+      fontWeight: 'bold',
+      color: getScoreColor(diagnostic.score),
       marginVertical: theme.spacing.sm,
     },
     footer: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       alignItems: 'center',
-      paddingTop: theme.spacing.sm,
-      borderTopWidth: 1,
-      borderTopColor: '#F3F4F6',
+      marginTop: theme.spacing.xs,
     },
-    actions: {
-      flexDirection: 'row',
-    },
-    tag: {
-      backgroundColor: '#E0F2F1',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-      marginRight: 8,
-    },
-    tagText: {
-      fontSize: 12,
-      color: theme.colors.primary,
-    },
-    // Optimisation pour tactile sur mobile
-    touchableArea: {
-      padding: isMobile ? 8 : 0,
-    },
+    deleteButton: {
+      backgroundColor: '#ffeaea',
+      borderRadius: 20,
+    }
   });
 
   // Fonction pour déterminer la couleur selon le score
   function getScoreColor(score) {
-    if (score >= 80) return '#10B981';
-    if (score >= 60) return '#14B8A6';
-    if (score >= 40) return '#F59E0B';
-    if (score >= 20) return '#F97316';
-    return '#EF4444';
+    if (score < 150) return '#10B981'; // Faible risque - vert
+    if (score < 300) return '#F59E0B'; // Risque modéré - orange
+    return '#EF4444'; // Risque élevé - rouge
+  }
+
+  // Fonction pour obtenir le niveau de stress
+  function getStressLevel(score) {
+    if (score < 150) return "Faible risque de stress";
+    if (score < 300) return "Risque modéré de stress";
+    return "Risque élevé de stress";
   }
 
   // Format de date adapté au mobile (plus compact)
@@ -113,7 +138,7 @@ const DiagnosticCard = ({ diagnostic, onShare, onFavorite }) => {
             {diagnostic.title}
           </Text>
           <View style={styles.score}>
-            <Text style={styles.scoreText}>{diagnostic.score}%</Text>
+            <Text style={styles.scoreText}>{diagnostic.score}</Text>
           </View>
         </View>
         
@@ -121,48 +146,19 @@ const DiagnosticCard = ({ diagnostic, onShare, onFavorite }) => {
           {formatDate(diagnostic.completedAt)}
         </Text>
         
-        {/* Sur mobile, on limite le texte pour économiser l'espace */}
-        {diagnostic.recommendations && (
-          <Text 
-            style={styles.recommendations} 
-            numberOfLines={isMobile ? 2 : 3}>
-            {diagnostic.recommendations}
-          </Text>
-        )}
+        <Text style={styles.stressLevel}>
+          {getStressLevel(diagnostic.score)}
+        </Text>
         
         <View style={styles.footer}>
-          <View style={{ flexDirection: 'row' }}>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>
-                {diagnostic.isPublic ? 'Public' : 'Privé'}
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.actions}>
-            {/* Boutons avec zones tactiles optimisées pour mobile */}
-            <TouchableOpacity 
-              style={styles.touchableArea}
-              onPress={() => onFavorite(diagnostic.id)}
-            >
-              <IconButton
-                icon={diagnostic.isFavorite ? "heart" : "heart-outline"}
-                iconColor={diagnostic.isFavorite ? theme.colors.error : theme.colors.text}
-                size={20}
-              />
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.touchableArea}
-              onPress={() => onShare(diagnostic.id)}
-            >
-              <IconButton
-                icon="share-variant"
-                iconColor={theme.colors.text}
-                size={20}
-              />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity onPress={handleDelete}>
+            <IconButton
+              icon="delete"
+              iconColor="#FF5252"
+              size={20}
+              style={styles.deleteButton}
+            />
+          </TouchableOpacity>
         </View>
       </View>
     </Card>
