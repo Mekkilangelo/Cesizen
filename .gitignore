@@ -1,0 +1,87 @@
+# System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node.js
+node_modules/
+*/node_modules/
+server/node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnpm-debug.log
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Build outputs
+dist/
+build/
+out/
+.output/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE and editors
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+*.swp
+*.swo
+.vs/
+*.iml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Mobile specific
+mobile/.expo/
+mobile/web-build/
+mobile/ios/Pods/
+mobile/android/app/build/
+mobile/android/.gradle/
+
+# Dependency lock files (can be included if preferred)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.webpack/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Generated files
+*.generated.*
+generated/
+
+# Misc
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
