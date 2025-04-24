@@ -193,14 +193,15 @@ exports.updateDiagnostic = async (req, res) => {
   }
 };
 
-// Contrôleur pour supprimer un diagnostic
+// Contrôleur pour supprimer un diagnostic 
 exports.deleteDiagnostic = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
     
-    console.log(`Tentative de suppression du diagnostic ID: ${id} par utilisateur ID: ${userId}`);
+    console.log(`Tentative de suppression du diagnostic ID: ${id} (type: ${typeof id}) par utilisateur ID: ${userId}`);
 
+    // 1. Vérifier si le diagnostic existe et appartient à l'utilisateur
     const diagnostic = await Diagnostic.findOne({
       where: { id, userId }
     });
@@ -208,24 +209,46 @@ exports.deleteDiagnostic = async (req, res) => {
     if (!diagnostic) {
       console.log(`Diagnostic non trouvé ou accès non autorisé. ID: ${id}, userID: ${userId}`);
       return res.status(404).json({
+        success: false,
         message: 'Diagnostic non trouvé ou accès non autorisé'
       });
     }
 
-    console.log(`Diagnostic trouvé, suppression en cours...`);
+    // 2. Supprimer d'abord toutes les interactions associées à ce diagnostic
+    console.log(`Suppression des interactions liées au diagnostic ID: ${id}`);
+    await DiagnosticInteraction.destroy({
+      where: { diagnosticId: id }
+    });
+
+    // 3. Ensuite, supprimer le diagnostic lui-même
+    console.log(`Suppression du diagnostic ID: ${id}`);
     await diagnostic.destroy();
-    console.log(`Diagnostic supprimé avec succès`);
+    
+    console.log(`Diagnostic ID: ${id} supprimé avec succès`);
 
     return res.status(200).json({
-      message: 'Diagnostic supprimé avec succès'
+      success: true,
+      message: 'Diagnostic supprimé avec succès',
+      id
     });
   } catch (error) {
-    console.error('Erreur lors de la suppression du diagnostic:', error);
+    console.error('Erreur détaillée lors de la suppression du diagnostic:', error);
+    
+    // Journalisation spécifique pour les erreurs de contrainte
+    if (error.name === 'SequelizeForeignKeyConstraintError') {
+      console.error('Erreur de contrainte de clé étrangère. Des enregistrements liés existent.');
+    }
+    
     return res.status(500).json({
-      message: 'Erreur serveur lors de la suppression du diagnostic: ' + error.message
+      success: false,
+      message: 'Erreur serveur lors de la suppression du diagnostic: ' + error.message,
+      error: error.name
     });
   }
 };
+
+// Aligner deleteDiagnosticResult sur deleteDiagnostic pour éviter la confusion
+exports.deleteDiagnosticResult = exports.deleteDiagnostic;
 
 // Contrôleur pour récupérer les diagnostics publics
 exports.getPublicDiagnostics = async (req, res) => {
@@ -305,6 +328,344 @@ exports.getFavoriteDiagnostics = async (req, res) => {
     console.error('Erreur lors de la récupération des diagnostics favoris:', error);
     return res.status(500).json({
       message: 'Erreur serveur lors de la récupération des diagnostics favoris'
+    });
+  }
+};
+
+// Contrôleur pour récupérer les types de diagnostic disponibles
+exports.getDiagnosticTypes = async (req, res) => {
+  try {
+    const diagnosticTypes = [
+      { id: 'general', name: 'Diagnostic Général', description: 'Évaluation générale de votre situation' },
+      { id: 'holmes-rahe', name: 'Holmes-Rahe', description: 'Évaluation du niveau de stress basée sur les événements de vie' },
+    ];
+
+    return res.status(200).json({
+      success: true,
+      types: diagnosticTypes
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des types de diagnostic:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des types de diagnostic'
+    });
+  }
+};
+
+// Contrôleur pour récupérer un diagnostic public
+exports.getPublicDiagnostic = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user ? req.user.id : null;
+
+    const diagnostic = await Diagnostic.findOne({
+      where: {
+        id,
+        isPublic: true
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username']
+        }
+      ]
+    });
+
+    if (!diagnostic) {
+      return res.status(404).json({
+        success: false,
+        message: 'Diagnostic public non trouvé'
+      });
+    }
+
+    if (userId) {
+      const existingView = await DiagnosticInteraction.findOne({
+        where: { userId, diagnosticId: id, type: 'view' }
+      });
+      
+      if (!existingView) {
+        await DiagnosticInteraction.create({
+          userId,
+          diagnosticId: id,
+          type: 'view'
+        });
+      }
+    }
+    
+    const stats = {
+      likes: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'like' } }),
+      dislikes: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'dislike' } }),
+      views: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'view' } }),
+      favorites: await DiagnosticInteraction.count({ where: { diagnosticId: id, type: 'favorite' } })
+    };
+    
+    let userInteractions = {};
+    if (userId) {
+      const interactions = await DiagnosticInteraction.findAll({
+        where: { userId, diagnosticId: id }
+      });
+      
+      interactions.forEach(interaction => {
+        userInteractions[interaction.type] = true;
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      diagnostic,
+      stats,
+      userInteractions
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du diagnostic public:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération du diagnostic public'
+    });
+  }
+};
+
+// Contrôleur pour exécuter un diagnostic
+exports.executeDiagnostic = async (req, res) => {
+  try {
+    const { responses, diagnosticType = 'general' } = req.body;
+    const userId = req.user ? req.user.id : null;
+
+    let score;
+    if (diagnosticType === 'holmes-rahe') {
+      score = Object.values(responses).reduce((total, value) => total + parseInt(value || 0), 0);
+    } else {
+      score = await calculateScore(responses);
+    }
+
+    const riskLevel = getRiskLevel(score);
+    const recommendations = generateRecommendations(score, diagnosticType === 'holmes-rahe');
+
+    const result = {
+      score,
+      riskLevel,
+      recommendations,
+      responses,
+      diagnosticType
+    };
+
+    if (userId) {
+      result.userId = userId;
+      result.canSave = true;
+    } else {
+      result.canSave = false;
+    }
+
+    return res.status(200).json({
+      success: true,
+      result
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'exécution du diagnostic:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'exécution du diagnostic'
+    });
+  }
+};
+
+// Contrôleur pour récupérer les questions d'un diagnostic
+exports.getDiagnosticQuestions = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const questions = await Question.findAll({
+      where: { diagnosticType: id },
+      order: [['order', 'ASC']]
+    });
+
+    if (questions.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `Aucune question trouvée pour le diagnostic de type ${id}`
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      questions
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des questions:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des questions'
+    });
+  }
+};
+
+// Contrôleur pour sauvegarder un résultat de diagnostic
+exports.saveDiagnosticResult = async (req, res) => {
+  try {
+    const { title, responses, isPublic, rawScore, diagnosticType, isHolmesRahe } = req.body;
+    const userId = req.user.id;
+
+    console.log('Données reçues pour la création du diagnostic:', req.body);
+
+    // S'assurer que le score est correctement défini
+    let score = rawScore;
+
+    // Calculer le niveau de risque basé sur le score
+    let riskLevel;
+    if (score < 150) {
+      riskLevel = 'low';
+    } else if (score < 300) {
+      riskLevel = 'moderate';
+    } else {
+      riskLevel = 'high';
+    }
+
+    // Générer des recommandations
+    const recommendations = generateRecommendations(score, isHolmesRahe);
+
+    // Créer le diagnostic avec toutes les données requises
+    const diagnostic = await Diagnostic.create({
+      userId,
+      title: title || `Diagnostic ${diagnosticType || 'holmes-rahe'} - ${new Date().toLocaleString()}`,
+      score, // Assurez-vous que score est défini
+      riskLevel, // Assurez-vous que riskLevel est défini
+      responses,
+      recommendations,
+      isPublic: isPublic || false,
+      completedAt: new Date(),
+      diagnosticType: diagnosticType || 'holmes-rahe'
+    });
+
+    // Log pour le débogage
+    console.log('Diagnostic créé avec succès:', diagnostic.id);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Résultat de diagnostic enregistré avec succès',
+      diagnostic
+    });
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement du résultat:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l\'enregistrement du résultat: ' + error.message
+    });
+  }
+};
+
+// Contrôleur pour récupérer tous les diagnostics (admin)
+exports.getAllDiagnostics = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const offset = (page - 1) * limit;
+    
+    const whereClause = {};
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    const { count, rows: diagnostics } = await Diagnostic.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    return res.status(200).json({
+      success: true,
+      count,
+      pages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      diagnostics
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des diagnostics:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la récupération des diagnostics'
+    });
+  }
+};
+
+// Contrôleur pour créer un nouveau type de diagnostic
+exports.createDiagnosticType = async (req, res) => {
+  try {
+    const { name, description, questions } = req.body;
+    
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé: Seuls les administrateurs peuvent créer des types de diagnostic'
+      });
+    }
+    
+    return res.status(201).json({
+      success: true,
+      message: 'Type de diagnostic créé avec succès',
+      diagnosticType: {
+        name,
+        description,
+        questions: questions ? questions.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Erreur lors de la création du type de diagnostic:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la création du type de diagnostic'
+    });
+  }
+};
+
+// Contrôleur pour modérer un diagnostic
+exports.moderateDiagnostic = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, moderationComment } = req.body;
+    const adminId = req.user.id;
+    
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé: Seuls les administrateurs peuvent modérer les diagnostics'
+      });
+    }
+    
+    const diagnostic = await Diagnostic.findByPk(id);
+    
+    if (!diagnostic) {
+      return res.status(404).json({
+        success: false,
+        message: 'Diagnostic non trouvé'
+      });
+    }
+    
+    await diagnostic.update({
+      status,
+      moderatedBy: adminId,
+      moderationComment,
+      moderationDate: new Date()
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: `Le diagnostic a été modéré avec succès (statut: ${status})`,
+      diagnostic
+    });
+  } catch (error) {
+    console.error('Erreur lors de la modération du diagnostic:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la modération du diagnostic'
     });
   }
 };

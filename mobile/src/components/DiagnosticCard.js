@@ -25,6 +25,29 @@ const DiagnosticCard = ({ diagnostic }) => {
       e.stopPropagation();
     }
     
+    console.log("========= BOUTON SUPPRIMER CLIQUÉ =========");
+    console.log("Diagnostic ID:", diagnostic.id);
+    console.log("Type de l'ID:", typeof diagnostic.id);
+    
+    // Tentative directe de suppression sans Alert pour déboguer
+    console.log("========= TENTATIVE DIRECTE DE SUPPRESSION =========");
+    
+    dispatch(deleteDiagnostic(diagnostic.id))
+      .unwrap()
+      .then(() => {
+        console.log("========= SUPPRESSION RÉUSSIE =========");
+        console.log("Le diagnostic a été supprimé avec succès");
+        // Rafraîchir la liste après suppression
+        dispatch(fetchRecentDiagnostics());
+      })
+      .catch(error => {
+        console.error("========= ERREUR DE SUPPRESSION DIRECTE =========");
+        console.error("Détails de l'erreur:", error);
+        console.error("Message d'erreur:", error.message);
+      });
+    
+    // Commentaire temporaire de l'Alert pour tester la suppression directe
+    /*
     Alert.alert(
       "Supprimer ce diagnostic",
       "Êtes-vous sûr de vouloir supprimer ce diagnostic de stress ?",
@@ -34,22 +57,28 @@ const DiagnosticCard = ({ diagnostic }) => {
           text: "Supprimer", 
           style: "destructive",
           onPress: () => {
+            console.log("========= CONFIRMATION DE SUPPRESSION =========");
             console.log("Tentative de suppression de l'ID:", diagnostic.id);
+            
             dispatch(deleteDiagnostic(diagnostic.id))
               .unwrap()
               .then(() => {
-                console.log("Suppression réussie");
+                console.log("========= SUPPRESSION RÉUSSIE =========");
+                console.log("Le diagnostic a été supprimé avec succès");
                 // Rafraîchir la liste après suppression
                 dispatch(fetchRecentDiagnostics());
               })
               .catch(error => {
-                console.error("Erreur de suppression:", error);
-                Alert.alert("Erreur", "Impossible de supprimer ce diagnostic");
+                console.error("========= ERREUR DE SUPPRESSION =========");
+                console.error("Détails de l'erreur:", error);
+                console.error("Message d'erreur:", error.message);
+                Alert.alert("Erreur", "Impossible de supprimer ce diagnostic: " + (error.message || "Erreur inconnue"));
               });
           }
         }
       ]
     );
+    */
   };
 
   // Style adaptatif basé sur la plateforme
@@ -151,7 +180,7 @@ const DiagnosticCard = ({ diagnostic }) => {
         </Text>
         
         <View style={styles.footer}>
-          <TouchableOpacity onPress={handleDelete}>
+          <TouchableOpacity onPress={(e) => handleDelete(e)}>
             <IconButton
               icon="delete"
               iconColor="#FF5252"

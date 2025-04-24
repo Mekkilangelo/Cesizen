@@ -1,86 +1,111 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../api/apiClient';
+import { getSecureItem, STORAGE_KEYS } from '../utils/secureStorage';
 
 // Récupérer les diagnostics récents
 export const fetchRecentDiagnostics = createAsyncThunk(
-  'diagnostics/fetchRecent',
+  'diagnostic/fetchRecent',
   async (_, { rejectWithValue }) => {
     try {
+      console.log('Fetching recent diagnostics...');
       const response = await apiClient.get('/diagnostics/user');
-      return response.data.diagnostics || [];
+      console.log('Diagnostics fetched:', response.data);
+      return response.data.diagnostics;
     } catch (error) {
+      console.error('Error fetching diagnostics:', error);
       return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
-
-// Alias pour la compatibilité avec les tests - même fonction, nom différent
-export const fetchDiagnostics = fetchRecentDiagnostics;
 
 // Récupérer un diagnostic spécifique
 export const fetchDiagnosticById = createAsyncThunk(
-  'diagnostics/fetchById',
+  'diagnostic/fetchById',
   async (id, { rejectWithValue }) => {
     try {
+      console.log(`Fetching diagnostic with id ${id}...`);
       const response = await apiClient.get(`/diagnostics/${id}`);
-      return response.data;
+      console.log('Diagnostic fetched:', response.data);
+      return response.data.diagnostic;
     } catch (error) {
+      console.error(`Error fetching diagnostic ${id}:`, error);
       return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
 
-// Créer un nouveau diagnostic Holmes-Rahe
-export const createDiagnostic = createAsyncThunk(
-  'diagnostics/create',
+// Créer un diagnostic Holmes-Rahe
+export const createHolmesRaheDiagnostic = createAsyncThunk(
+  'diagnostic/createHolmesRahe',
   async (diagnosticData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/diagnostics', {
-        ...diagnosticData,
-        rawScore: diagnosticData.rawScore
-      });
+      console.log('Creating Holmes-Rahe diagnostic:', diagnosticData);
+      const response = await apiClient.post('/diagnostics', diagnosticData);
+      console.log('Diagnostic created:', response.data);
       return response.data.diagnostic;
     } catch (error) {
+      console.error('Error creating diagnostic:', error);
       return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
 
-// Mise à jour d'un diagnostic
-export const updateDiagnostic = createAsyncThunk(
-  'diagnostics/update',
-  async ({ id, data }, { rejectWithValue }) => {
-    try {
-      const response = await apiClient.put(`/diagnostics/${id}`, data);
-      return response.data.diagnostic;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || { message: error.message });
-    }
-  }
-);
+// Alias pour créer un diagnostic (pour compatibilité avec le code existant)
+export const createDiagnostic = createHolmesRaheDiagnostic;
 
 // Supprimer un diagnostic
 export const deleteDiagnostic = createAsyncThunk(
-  'diagnostics/delete',
-  async (id, { rejectWithValue }) => {
+  'diagnostic/delete',
+  async (id, { rejectWithValue, getState }) => {
     try {
-      console.log(`Envoi de la requête DELETE à /diagnostics/${id}`);
-      const response = await apiClient.delete(`/diagnostics/${id}`);
-      console.log('Réponse de suppression:', response.data);
-      return id;
+      console.log(`[DELETE ACTION] Suppression du diagnostic ID: ${id}`);
+      console.log(`[DELETE ACTION] Type de l'ID: ${typeof id}`);
+      
+      // Afficher l'état Redux actuel pour le débogage
+      const state = getState();
+      console.log('[DELETE ACTION] État auth:', {
+        isAuthenticated: state.auth.isAuthenticated,
+        hasToken: !!state.auth.token,
+        user: state.auth.user ? 'Présent' : 'Absent'
+      });
+
+      // Récupérer le token pour vérifier l'authentification
+      const token = await getSecureItem(STORAGE_KEYS.AUTH_TOKEN);
+      console.log('[DELETE ACTION] Token récupéré:', token ? 'Présent' : 'Absent');
+      
+      // S'assurer que l'ID est un nombre
+      const numericId = typeof id === 'string' ? parseInt(id, 10) : id;
+      console.log(`[DELETE ACTION] URL de la requête: /diagnostics/${numericId}`);
+      
+      const response = await apiClient.delete(`/diagnostics/${numericId}`);
+      console.log('[DELETE ACTION] Réponse de suppression:', response.data);
+      
+      // Ajouter un petit délai pour s'assurer que tout est bien traité
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      console.log('[DELETE ACTION] Suppression réussie, retour de l\'ID:', numericId);
+      return numericId;
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      // Afficher plus de détails sur l'erreur
+      console.error('[DELETE ACTION] Erreur lors de la suppression:', error);
+      
       if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
+        console.error('[DELETE ACTION] Détails de l\'erreur response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data
+        });
+      } else if (error.request) {
+        console.error('[DELETE ACTION] Pas de réponse reçue. Requête:', error.request);
+      } else {
+        console.error('[DELETE ACTION] Erreur de configuration:', error.message);
       }
-      return rejectWithValue(error.response?.data || { message: error.message || 'Erreur inconnue' });
+      
+      return rejectWithValue(error.response?.data || { message: error.message });
     }
   }
 );
 
-// Initialisation du state
+// État initial
 const initialState = {
   latestDiagnostics: [],
   currentDiagnostic: null,
@@ -88,21 +113,21 @@ const initialState = {
   error: null,
 };
 
-// Slice
+// Le slice Redux
 const diagnosticSlice = createSlice({
-  name: 'diagnostics',
+  name: 'diagnostic',
   initialState,
   reducers: {
-    resetCurrentDiagnostic: (state) => {
+    clearCurrentDiagnostic: (state) => {
       state.currentDiagnostic = null;
     },
-    resetError: (state) => {
-      state.error = null;
-    },
+    setLoadingState: (state, action) => {
+      state.isLoading = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
-      // Récupération des diagnostics récents
+      // Gestion de fetchRecentDiagnostics
       .addCase(fetchRecentDiagnostics.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -113,59 +138,48 @@ const diagnosticSlice = createSlice({
       })
       .addCase(fetchRecentDiagnostics.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la récupération des tests de stress';
+        state.error = action.payload?.message || 'Erreur lors du chargement des diagnostics';
       })
       
-      // Récupération d'un diagnostic par ID
+      // Gestion de fetchDiagnosticById
       .addCase(fetchDiagnosticById.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
       .addCase(fetchDiagnosticById.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.currentDiagnostic = action.payload.diagnostic;
+        state.currentDiagnostic = action.payload;
       })
       .addCase(fetchDiagnosticById.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la récupération du test de stress';
+        state.error = action.payload?.message || 'Erreur lors du chargement du diagnostic';
       })
       
-      // Création d'un diagnostic
-      .addCase(createDiagnostic.pending, (state) => {
+      // Gestion de createHolmesRaheDiagnostic
+      .addCase(createHolmesRaheDiagnostic.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
-      .addCase(createDiagnostic.fulfilled, (state, action) => {
+      .addCase(createHolmesRaheDiagnostic.fulfilled, (state, action) => {
         state.isLoading = false;
         state.latestDiagnostics = [action.payload, ...state.latestDiagnostics];
         state.currentDiagnostic = action.payload;
       })
-      .addCase(createDiagnostic.rejected, (state, action) => {
+      .addCase(createHolmesRaheDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la création du test de stress';
+        state.error = action.payload?.message || 'Erreur lors de la création du diagnostic';
       })
       
-      .addCase(updateDiagnostic.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(updateDiagnostic.fulfilled, (state, action) => {
-        state.isLoading = false;
-        state.latestDiagnostics = state.latestDiagnostics.map(diag =>
-          diag.id === action.payload.id ? action.payload : diag
-        );
-        state.currentDiagnostic = action.payload;
-      })
-      .addCase(updateDiagnostic.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la mise à jour du test de stress';
-      })
-      
+      // Gestion de deleteDiagnostic
       .addCase(deleteDiagnostic.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(deleteDiagnostic.fulfilled, (state, action) => {
         state.isLoading = false;
+        console.log('Removing diagnostic from state:', action.payload);
         state.latestDiagnostics = state.latestDiagnostics.filter(
-          diag => diag.id !== action.payload
+          diagnostic => diagnostic.id !== action.payload
         );
         if (state.currentDiagnostic && state.currentDiagnostic.id === action.payload) {
           state.currentDiagnostic = null;
@@ -173,10 +187,10 @@ const diagnosticSlice = createSlice({
       })
       .addCase(deleteDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la suppression du test de stress';
+        state.error = action.payload?.message || 'Erreur lors de la suppression du diagnostic';
       });
   },
 });
 
-export const { resetCurrentDiagnostic, resetError } = diagnosticSlice.actions;
+export const { clearCurrentDiagnostic, setLoadingState } = diagnosticSlice.actions;
 export default diagnosticSlice.reducer;

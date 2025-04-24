@@ -20,10 +20,30 @@ const RegisterScreen = ({ navigation }) => {
   const { isMobile } = useResponsive();
 
   const validateForm = () => {
+    // Vérification de champs vides
+    if (!username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+      setPasswordError('Tous les champs sont obligatoires');
+      return false;
+    }
+    
+    // Validation basique d'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setPasswordError('Adresse email invalide');
+      return false;
+    }
+    
+    // Vérification de la longueur du mot de passe
+    if (password.length < 6) {
+      setPasswordError('Le mot de passe doit contenir au moins 6 caractères');
+      return false;
+    }
+    
     if (password !== confirmPassword) {
       setPasswordError('Les mots de passe ne correspondent pas');
       return false;
     }
+    
     setPasswordError('');
     return true;
   };
@@ -44,19 +64,20 @@ const RegisterScreen = ({ navigation }) => {
 
   const testApiConnection = () => {
     console.log('Testing API connection...');
-    fetch(apiClient.defaults.baseURL.replace('/api', ''))
-      .then(response => {
-        console.log('API response status:', response.status);
-        return response.text();
-      })
-      .then(data => {
-        console.log('API response data:', data);
-        alert('Connexion au serveur réussie!');
-      })
-      .catch(error => {
-        console.error('API test error:', error);
-        alert('Erreur de connexion au serveur: ' + error.message);
-      });
+    import('../../api/apiClient').then(({ testServerConnection }) => {
+      testServerConnection()
+        .then(isConnected => {
+          if (isConnected) {
+            alert('✅ Connexion au serveur réussie!\nL\'API est accessible.');
+          } else {
+            alert('⚠️ Le serveur est accessible mais répond avec une erreur.');
+          }
+        })
+        .catch(error => {
+          console.error('API test error:', error);
+          alert('❌ Erreur de connexion au serveur: ' + error.message + '\nVérifiez que votre serveur backend est bien démarré sur le port 5001.');
+        });
+    });
   };
 
   const styles = StyleSheet.create({

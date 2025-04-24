@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { Text, FAB, Searchbar, useTheme, Button, Card } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { fetchRecentDiagnostics } from '../store/diagnosticSlice';
 import DiagnosticCard from '../components/DiagnosticCard';
 import useResponsive from '../hooks/useResponsive';
@@ -15,6 +15,7 @@ const DiagnosticScreen = () => {
   const navigation = useNavigation();
   const theme = useTheme();
   const { isMobile } = useResponsive();
+  const isAuthenticated = useSelector(state => state.auth.isAuthenticated);
 
   useEffect(() => {
     loadDiagnostics();
@@ -31,7 +32,13 @@ const DiagnosticScreen = () => {
   };
 
   const handleNewDiagnostic = () => {
-    navigation.navigate('HolmesRaheDiagnostic');
+    if (!isAuthenticated) {
+      // Naviguer vers l'écran de login
+      navigation.navigate('Auth', { screen: 'Login' });
+    } else {
+      // Corriger la navigation vers l'écran de diagnostic Holmes-Rahe
+      navigation.navigate('HolmesRaheDiagnostic');
+    }
   };
 
   const filteredDiagnostics = searchQuery
@@ -102,10 +109,6 @@ const DiagnosticScreen = () => {
     },
   });
 
-  const renderItem = ({ item }) => (
-    <DiagnosticCard diagnostic={item} />
-  );
-
   return (
     <View style={styles.container}>
       <Card style={styles.infoCard}>
@@ -140,8 +143,18 @@ const DiagnosticScreen = () => {
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>Aucun diagnostic</Text>
             <Text style={styles.subText}>
-              Créez votre premier test de stress pour évaluer votre niveau de stress 
+              {isAuthenticated 
+                ? "Créez votre premier test de stress pour évaluer votre niveau de stress" 
+                : "Connectez-vous pour créer et consulter vos diagnostics de stress"}
             </Text>
+            {!isAuthenticated && (
+              <Button 
+                mode="contained"
+                onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+              >
+                Se connecter
+              </Button>
+            )}
           </View>
         }
       />
@@ -150,10 +163,14 @@ const DiagnosticScreen = () => {
         style={styles.fab}
         icon="plus"
         onPress={handleNewDiagnostic}
-        label="Nouveau test"
+        label={isAuthenticated ? "Nouveau test" : "Se connecter"}
       />
     </View>
   );
 };
+
+const renderItem = ({ item }) => (
+  <DiagnosticCard diagnostic={item} />
+);
 
 export default DiagnosticScreen;

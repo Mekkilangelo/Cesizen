@@ -134,7 +134,7 @@ exports.getContent = async (req, res) => {
         },
         {
           model: Comment,
-          as: 'comments',
+          as: 'comments',  // Spécifier l'alias correct ici
           include: [
             {
               model: User,
@@ -142,7 +142,6 @@ exports.getContent = async (req, res) => {
               attributes: ['id', 'username']
             }
           ],
-          where: { isModerated: true },
           required: false
         }
       ]
@@ -351,6 +350,103 @@ exports.getFavoriteContents = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des favoris',
+      error: error.message
+    });
+  }
+};
+
+// Routes d'administration
+exports.getAllContents = async (req, res) => {
+  try {
+    const { status, type, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // Construire les conditions de recherche
+    const whereClause = {};
+    
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    if (type) {
+      whereClause.type = type;
+    }
+    
+    // Récupérer tous les contenus avec pagination
+    const { count, rows: contents } = await Content.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'author',
+          attributes: ['id', 'username', 'email', 'role']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+    return res.status(200).json({
+      success: true,
+      count,
+      pages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      contents
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des contenus:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des contenus',
+      error: error.message
+    });
+  }
+};
+
+// Modération d'un contenu par l'administrateur
+exports.moderateContent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, moderationComment } = req.body;
+    const adminId = req.user.id;
+    
+    // Vérifier que l'utilisateur est bien un admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé: Seuls les administrateurs peuvent modérer les contenus'
+      });
+    }
+    
+    // Récupérer le contenu
+    const content = await Content.findByPk(id);
+    
+    if (!content) {
+      return res.status(404).json({
+        success: false,
+        message: 'Contenu non trouvé'
+      });
+    }
+    
+    // Mettre à jour le statut et ajouter des informations de modération
+    await content.update({
+      status,
+      moderatedBy: adminId,
+      moderationComment,
+      moderationDate: new Date()
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: `Le contenu a été modéré avec succès (statut: ${status})`,
+      content
+    });
+  } catch (error) {
+    console.error('Erreur lors de la modération du contenu:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la modération du contenu',
       error: error.message
     });
   }

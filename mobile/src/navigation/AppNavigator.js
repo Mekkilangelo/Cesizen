@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -16,6 +15,10 @@ import HolmesRaheDiagnosticScreen from '../screens/HolmesRaheDiagnosticScreen';
 import CreateContentScreen from '../screens/CreateContentScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ContentDetailScreen from '../screens/ContentDetailScreen';
+import GuestContentScreen from '../screens/GuestContentScreen';
+import GuestHomeScreen from '../screens/GuestHomeScreen';
+import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import LoginRegisterButton from '../components/LoginRegisterButton';
 
 // Navigation Stack
 const Stack = createNativeStackNavigator();
@@ -27,6 +30,103 @@ const AuthNavigator = () => (
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
   </Stack.Navigator>
+);
+
+// Navigateur pour les écrans de contenu invité
+const GuestContentNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen 
+      name="GuestContentList" 
+      component={GuestContentScreen} 
+      options={{ title: 'Articles publics', headerShown: true }}
+    />
+    <Stack.Screen 
+      name="GuestContentDetail" 
+      component={ContentDetailScreen}
+      options={({ route }) => ({ 
+        title: route.params?.title || 'Article',
+        headerShown: true
+      })}
+    />
+  </Stack.Navigator>
+);
+
+// Navigateur pour les écrans de diagnostic invité
+const GuestDiagnosticNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen 
+      name="GuestDiagnosticList" 
+      component={DiagnosticScreen} 
+      options={{ title: 'Tests de stress Holmes-Rahe', headerShown: true }}
+    />
+    <Stack.Screen 
+      name="GuestDiagnosticDetail" 
+      component={DiagnosticDetailScreen}
+      options={({ route }) => ({ 
+        title: route.params?.title || 'Diagnostic partagé',
+        headerShown: true
+      })}
+    />
+    <Stack.Screen 
+      name="HolmesRaheDiagnostic" 
+      component={HolmesRaheDiagnosticScreen} 
+      options={{ title: "Test de stress Holmes-Rahe" }} 
+    />
+  </Stack.Navigator>
+);
+
+// Navigation principale pour les visiteurs anonymes avec barre d'onglets
+const GuestTabNavigator = () => (
+  <Tab.Navigator
+    screenOptions={{
+      headerShown: true,
+      tabBarActiveTintColor: '#3498db',
+      tabBarInactiveTintColor: '#95a5a6',
+    }}
+  >
+    <Tab.Screen 
+      name="GuestHome" 
+      component={GuestHomeScreen} 
+      options={{
+        title: 'Accueil',
+        tabBarIcon: ({ color }) => (
+          <MaterialCommunityIcons name="home" color={color} size={26} />
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="GuestContent" 
+      component={GuestContentNavigator}
+      options={{
+        title: 'Articles',
+        headerShown: false,
+        tabBarIcon: ({ color }) => (
+          <MaterialCommunityIcons name="file-document" color={color} size={26} />
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="GuestDiagnostic" 
+      component={GuestDiagnosticNavigator}
+      options={{
+        title: 'Diagnostics',
+        headerShown: false,
+        tabBarIcon: ({ color }) => (
+          <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
+        ),
+      }}
+    />
+    <Tab.Screen 
+      name="Login" 
+      component={LoginRegisterButton}
+      options={{
+        title: 'Connexion',
+        tabBarIcon: ({ color }) => (
+          <MaterialCommunityIcons name="login" color={color} size={26} />
+        ),
+      }}
+    />
+  </Tab.Navigator>
 );
 
 // Créer un navigateur de pile pour l'écran Home
@@ -71,8 +171,19 @@ const DiagnosticNavigator = () => (
   </Stack.Navigator>
 );
 
-// Navigation principale mise à jour pour utiliser HomeNavigator
-const MainTabNavigator = () => {
+// Navigateur pour l'administration
+const AdminNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen 
+      name="AdminDashboard" 
+      component={AdminDashboardScreen} 
+      options={{ title: 'Administration', headerShown: true }}
+    />
+  </Stack.Navigator>
+);
+
+// Navigation principale des utilisateurs connectés normaux
+const UserTabNavigator = () => {
   return (
     <Tab.Navigator
       screenOptions={{
@@ -127,22 +238,91 @@ const MainTabNavigator = () => {
   );
 };
 
-// Navigateur principal
+// Navigation principale des administrateurs
+const AdminTabNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: true,
+        tabBarActiveTintColor: '#e74c3c',
+        tabBarInactiveTintColor: '#95a5a6',
+      }}
+    >
+      <Tab.Screen 
+        name="AdminHome" 
+        component={AdminNavigator} 
+        options={{
+          title: 'Administration',
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="shield-account" color={color} size={26} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeNavigator} 
+        options={{
+          title: 'Accueil',
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="home" color={color} size={26} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Diagnostic" 
+        component={DiagnosticNavigator}
+        options={{
+          tabBarLabel: 'Tests de stress',
+          headerShown: false,
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profil',
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="account" color={color} size={26} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+// Navigateur principal qui détermine la navigation en fonction du rôle de l'utilisateur
 const AppNavigator = () => {
   const auth = useSelector(state => state.auth);
-  const { isAuthenticated, token, user } = auth;
+  const { isAuthenticated, user } = auth;
   
   // Ajouter un log pour déboguer
   useEffect(() => {
-    console.log('État d\'authentification:', { isAuthenticated, hasToken: !!token, hasUser: !!user });
-  }, [isAuthenticated, token, user]);
-  
+    console.log('État d\'authentification:', { isAuthenticated, hasUser: !!user });
+    if (user) {
+      console.log('Rôle de l\'utilisateur:', user.role);
+    }
+  }, [isAuthenticated, user]);
+
+  // Créer un Stack Navigator racine pour inclure tous les navigateurs
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
+      {!isAuthenticated ? (
+        // Si l'utilisateur n'est pas authentifié, afficher l'écran de connexion ou l'écran invité
+        <>
+          <Stack.Screen name="GuestTabs" component={GuestTabNavigator} />
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        </>
+      ) : user?.role === 'admin' ? (
+        // Si l'utilisateur est un administrateur
+        <Stack.Screen name="AdminTabs" component={AdminTabNavigator} />
       ) : (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
+        // Si l'utilisateur est un utilisateur normal
+        <Stack.Screen name="UserTabs" component={UserTabNavigator} />
       )}
     </Stack.Navigator>
   );

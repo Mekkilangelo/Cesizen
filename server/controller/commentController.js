@@ -1,4 +1,4 @@
-const { Comment, User, Content } = require('../models');
+const { Comment, User, Content, Diagnostic } = require('../models');
 
 // Création d'un nouveau commentaire
 exports.createComment = async (req, res) => {
@@ -34,7 +34,7 @@ exports.createComment = async (req, res) => {
     
     // Récupérer les infos de l'utilisateur pour la réponse
     const commentWithUser = await Comment.findByPk(newComment.id, {
-      include: [{ model: User, attributes: ['id', 'username'] }]
+      include: [{ model: User, as: 'user', attributes: ['id', 'username'] }]
     });
     
     return res.status(201).json({
@@ -67,7 +67,7 @@ exports.getContentComments = async (req, res) => {
     // Récupérer les commentaires avec les infos utilisateur
     const comments = await Comment.findAll({
       where: { contentId },
-      include: [{ model: User, attributes: ['id', 'username'] }],
+      include: [{ model: User, as: 'user', attributes: ['id', 'username'] }],
       order: [['createdAt', 'DESC']]
     });
     
@@ -185,7 +185,7 @@ exports.getDiagnosticComments = async (req, res) => {
     // Récupérer les commentaires avec les infos utilisateur
     const comments = await Comment.findAll({
       where: { diagnosticId },
-      include: [{ model: User, attributes: ['id', 'username'] }],
+      include: [{ model: User, as: 'user', attributes: ['id', 'username'] }],
       order: [['createdAt', 'DESC']]
     });
     
@@ -198,6 +198,104 @@ exports.getDiagnosticComments = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: `Erreur lors de la récupération des commentaires: ${error.message}`
+    });
+  }
+};
+
+// Récupérer tous les commentaires (pour l'administration)
+exports.getAllComments = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // Construire les conditions de recherche
+    const whereClause = {};
+    
+    if (status) {
+      whereClause.status = status;
+    }
+    
+    // Récupérer tous les commentaires avec pagination
+    const { count, rows: comments } = await Comment.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'username', 'email', 'role']
+        },
+        {
+          model: Content,
+          attributes: ['id', 'title', 'type']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+    
+    return res.status(200).json({
+      success: true,
+      count,
+      pages: Math.ceil(count / limit),
+      currentPage: parseInt(page),
+      comments
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des commentaires:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des commentaires',
+      error: error.message
+    });
+  }
+};
+
+// Modérer un commentaire (pour l'administration)
+exports.moderateComment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, moderationComment } = req.body;
+    const adminId = req.user.id;
+    
+    // Vérifier que l'utilisateur est bien un admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé: Seuls les administrateurs peuvent modérer les commentaires'
+      });
+    }
+    
+    // Récupérer le commentaire
+    const comment = await Comment.findByPk(id);
+    
+    if (!comment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Commentaire non trouvé'
+      });
+    }
+    
+    // Mettre à jour le statut et ajouter des informations de modération
+    await comment.update({
+      isModerated: true,
+      status,
+      moderatedBy: adminId,
+      moderationComment,
+      moderationDate: new Date()
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: `Le commentaire a été modéré avec succès (statut: ${status})`,
+      comment
+    });
+  } catch (error) {
+    console.error('Erreur lors de la modération du commentaire:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la modération du commentaire',
+      error: error.message
     });
   }
 };

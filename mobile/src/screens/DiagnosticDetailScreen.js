@@ -3,7 +3,7 @@ import { View, StyleSheet, ScrollView, Share, Alert } from 'react-native';
 import { Text, Card, Button, Divider, useTheme, ProgressBar, IconButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchDiagnosticById, deleteDiagnostic } from '../store/diagnosticSlice';
+import { fetchDiagnosticById, deleteDiagnostic, setLoadingState } from '../store/diagnosticSlice';
 import useResponsive from '../hooks/useResponsive';
 import { CommonActions } from '@react-navigation/native';
 
@@ -185,32 +185,54 @@ const DiagnosticDetailScreen = ({ route, navigation }) => {
           style: "destructive",
           onPress: () => {
             if (currentDiagnostic && currentDiagnostic.id) {
+              console.log('Suppression du diagnostic ID:', currentDiagnostic.id);
+              console.log('Type de l\'ID:', typeof currentDiagnostic.id);
+              
+              // Utiliser l'action setLoadingState pour activer l'indicateur de chargement
+              dispatch(setLoadingState(true));
+              
               dispatch(deleteDiagnostic(currentDiagnostic.id))
                 .unwrap()
                 .then(() => {
-                  // Utiliser une navigation plus explicite qui fonctionne mieux sur le web
-                  navigation.reset({
-                    index: 0,
-                    routes: [
-                      { 
-                        name: 'Main',
-                        state: {
-                          routes: [
-                            {
-                              name: 'Diagnostic'
-                            }
-                          ]
+                  console.log('Diagnostic supprimé avec succès, navigation...');
+                  dispatch(setLoadingState(false));
+                  
+                  // Alerter l'utilisateur du succès
+                  Alert.alert(
+                    "Succès",
+                    "Le diagnostic a été supprimé avec succès",
+                    [
+                      {
+                        text: "OK",
+                        onPress: () => {
+                          // Navigation vers l'écran principal
+                          navigation.reset({
+                            index: 0,
+                            routes: [
+                              { 
+                                name: 'Main',
+                                state: {
+                                  routes: [{ name: 'Diagnostic' }]
+                                }
+                              }
+                            ],
+                          });
                         }
                       }
-                    ],
-                  });
+                    ]
+                  );
                 })
                 .catch(error => {
+                  console.error('Erreur lors de la suppression:', error);
+                  dispatch(setLoadingState(false));
                   Alert.alert(
                     "Erreur", 
                     "Impossible de supprimer ce diagnostic: " + (error.message || "Erreur inconnue")
                   );
                 });
+            } else {
+              console.error('ID du diagnostic non disponible pour la suppression');
+              Alert.alert("Erreur", "Impossible d'identifier le diagnostic à supprimer");
             }
           }
         }

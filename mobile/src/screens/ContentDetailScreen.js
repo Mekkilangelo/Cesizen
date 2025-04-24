@@ -27,30 +27,29 @@ const ContentDetailScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (id) {
-      console.log('Chargement du contenu avec ID:', id);
-      loadContent();
-      
-      // Enregistrer une vue si l'utilisateur est connecté
-      if (isAuthenticated) {
-        dispatch(recordContentView(id));
+    // Fonction de chargement initial qui récupère toutes les données nécessaires
+    const loadInitialData = async () => {
+      setRefreshing(true);
+      try {
+        // Charger les détails du contenu
+        await dispatch(fetchContentById(id)).unwrap();
+        
+        // Charger les statistiques et les interactions en parallèle
+        await Promise.all([
+          dispatch(getContentStats(id)).unwrap(),
+          dispatch(getContentInteractions(id)).unwrap(),
+          dispatch(recordContentView(id)).unwrap() // Enregistrer la vue
+        ]);
+      } catch (error) {
+        console.error('Erreur lors du chargement:', error);
+        Alert.alert('Erreur', 'Impossible de charger le contenu pour le moment');
+      } finally {
+        setRefreshing(false);
       }
-      
-      // Chargez explicitement les statistiques et interactions à l'affichage
-      dispatch(getContentStats(id));
-      
-      if (isAuthenticated) {
-        dispatch(getContentInteractions(id));
-      }
-    }
-  }, [id, dispatch, isAuthenticated]);
+    };
 
-  const loadContent = () => {
-    if (id) {
-      console.log('Chargement du contenu avec ID:', id);
-      dispatch(fetchContentById(id));
-    }
-  };
+    loadInitialData();
+  }, [dispatch, id]);
 
   const reloadAllData = async () => {
     setRefreshing(true);
@@ -168,6 +167,35 @@ const ContentDetailScreen = ({ route, navigation }) => {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const renderComments = () => {
+    // S'assurer que comments est un tableau, même s'il est undefined
+    const commentsList = currentContent.Comments || currentContent.comments || [];
+    
+    if (commentsList.length === 0) {
+      return (
+        <Text style={{fontStyle: 'italic', color: theme.colors.placeholder}}>
+          Aucun commentaire pour le moment.
+        </Text>
+      );
+    }
+    
+    return commentsList.map((comment, index) => (
+      <Card key={index} style={styles.commentCard}>
+        <Card.Content>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
+            <Text style={styles.commentAuthor}>
+              {comment.user?.username || 'Utilisateur anonyme'}
+            </Text>
+            <Text style={styles.commentDate}>
+              {formatDate(comment.createdAt)}
+            </Text>
+          </View>
+          <Text>{comment.content || comment.text}</Text>
+        </Card.Content>
+      </Card>
+    ));
   };
 
   const styles = StyleSheet.create({
@@ -290,7 +318,7 @@ const ContentDetailScreen = ({ route, navigation }) => {
     return (
       <View style={styles.error}>
         <Text style={styles.errorText}>{error}</Text>
-        <Button mode="contained" onPress={loadContent}>Réessayer</Button>
+        <Button mode="contained" onPress={reloadAllData}>Réessayer</Button>
       </View>
     );
   }
@@ -412,27 +440,7 @@ const ContentDetailScreen = ({ route, navigation }) => {
         Commentaires ({comments.length || 0})
       </Text>
       
-      {comments.length > 0 ? (
-        comments.map((comment, index) => (
-          <Card key={index} style={styles.commentCard}>
-            <Card.Content>
-              <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
-                <Text style={styles.commentAuthor}>
-                  {comment.user?.username || 'Utilisateur anonyme'}
-                </Text>
-                <Text style={styles.commentDate}>
-                  {formatDate(comment.createdAt)}
-                </Text>
-              </View>
-              <Text>{comment.text || comment.content}</Text>
-            </Card.Content>
-          </Card>
-        ))
-      ) : (
-        <Text style={{fontStyle: 'italic', color: theme.colors.placeholder}}>
-          Aucun commentaire pour le moment.
-        </Text>
-      )}
+      {renderComments()}
       
       {/* Ajouter un commentaire */}
       <TextInput

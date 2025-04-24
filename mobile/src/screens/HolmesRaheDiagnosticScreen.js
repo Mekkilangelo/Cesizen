@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Checkbox, Button, Card, useTheme, ProgressBar } from 'react-native-paper';
-import { useDispatch } from 'react-redux';
+import { Text, Checkbox, Button, Card, useTheme, ProgressBar, Banner } from 'react-native-paper';
+import { useDispatch, useSelector } from 'react-redux';
 import { createDiagnostic } from '../store/diagnosticSlice';
 import useResponsive from '../hooks/useResponsive';
 
@@ -9,9 +9,11 @@ const HolmesRaheDiagnosticScreen = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const { isMobile } = useResponsive();
+  const { isAuthenticated } = useSelector(state => state.auth);
   const [selectedEvents, setSelectedEvents] = useState({});
   const [totalScore, setTotalScore] = useState(0);
   const [title, setTitle] = useState(`Diagnostic de stress (${new Date().toLocaleDateString()})`);
+  const [visible, setVisible] = useState(!isAuthenticated);
   
   // Holmes and Rahe life events with their scores
   const holmesRaheEvents = [
@@ -98,52 +100,102 @@ const HolmesRaheDiagnosticScreen = ({ navigation }) => {
       responses[event.id] = selectedEvents[event.id] ? 1 : 0;
     });
 
-    // Calculate normalized score
-    const normScore = totalScore;
+    // Récupérer le niveau de risque basé sur le score
+    const riskLevel = totalScore < 150 ? 'low' : totalScore < 300 ? 'moderate' : 'high';
 
-    dispatch(createDiagnostic({
-      title,
-      responses,
-      isPublic: false,
-      rawScore: totalScore,
-      isHolmesRahe: true
-    }))
-    .unwrap()
-    .then(() => {
-      Alert.alert(
-        "Diagnostic complété",
-        `Votre score de stress Holmes-Rahe est de ${totalScore} points.`,
-        [{ 
-          text: "OK", 
-          onPress: () => {
-            // Réinitialiser le formulaire
-            setSelectedEvents({});
-            setTotalScore(0);
-            setTitle(`Diagnostic de stress (${new Date().toLocaleDateString()})`);
-            
-            // Navigation robuste qui fonctionne en mode web
-            navigation.reset({
-              index: 0,
-              routes: [
-                { 
-                  name: 'Main',
-                  state: {
-                    routes: [
-                      {
-                        name: 'Diagnostic'
+    // Si l'utilisateur est authentifié, on enregistre le diagnostic
+    if (isAuthenticated) {
+      // S'assurer que nous envoyons tous les champs obligatoires
+      const diagnosticData = {
+        title,
+        responses,
+        isPublic: false,
+        rawScore: totalScore,  // Score brut pour l'échelle Holmes-Rahe
+        score: totalScore,     // Score explicitement défini pour éviter le null
+        isHolmesRahe: true,
+        riskLevel
+      };
+
+      console.log('Envoi des données de diagnostic:', diagnosticData);
+
+      dispatch(createDiagnostic(diagnosticData))
+        .unwrap()
+        .then((result) => {
+          console.log('Diagnostic créé avec succès:', result);
+          Alert.alert(
+            "Diagnostic complété",
+            `Votre score de stress Holmes-Rahe est de ${totalScore} points.`,
+            [{ 
+              text: "OK", 
+              onPress: () => {
+                // Réinitialiser le formulaire
+                setSelectedEvents({});
+                setTotalScore(0);
+                setTitle(`Diagnostic de stress (${new Date().toLocaleDateString()})`);
+                
+                // Navigation robuste qui fonctionne en mode web
+                navigation.reset({
+                  index: 0,
+                  routes: [
+                    { 
+                      name: 'Main',
+                      state: {
+                        routes: [
+                          {
+                            name: 'Diagnostic'
+                          }
+                        ]
                       }
-                    ]
-                  }
-                }
-              ],
-            });
+                    }
+                  ],
+                });
+              }
+            }]
+          );
+        })
+        .catch(error => {
+          console.error('Erreur lors de la création du diagnostic:', error);
+          Alert.alert("Erreur", "Impossible de sauvegarder le diagnostic: " + (error.message || "Erreur inconnue"));
+        });
+    } else {
+      // Mode visiteur : on affiche juste le résultat sans sauvegarder
+      let message = `Votre score de stress Holmes-Rahe est de ${totalScore} points.\n\n`;
+      
+      if (riskLevel === 'low') {
+        message += "Faible risque de stress : Vous avez un score inférieur à 150, ce qui indique un faible risque de développer des problèmes de santé liés au stress dans l'année à venir.";
+      } else if (riskLevel === 'moderate') {
+        message += "Risque modéré de stress : Vous avez un score entre 150 et 300, ce qui indique un risque modéré (environ 50%) de développer des problèmes de santé liés au stress dans l'année à venir.";
+      } else {
+        message += "Risque élevé de stress : Vous avez un score supérieur à 300, ce qui indique un risque élevé (environ 80%) de développer des problèmes de santé liés au stress dans l'année à venir.";
+      }
+      
+      message += "\n\nConnectez-vous pour sauvegarder vos résultats et suivre votre évolution.";
+      
+      Alert.alert(
+        "Résultat du test de stress",
+        message,
+        [
+          { 
+            text: "Se connecter", 
+            onPress: () => navigation.navigate('Auth', { screen: 'Login' }),
+            style: "default"
+          },
+          { 
+            text: "Fermer", 
+            onPress: () => {
+              // Réinitialiser le formulaire
+              setSelectedEvents({});
+              setTotalScore(0);
+              setTitle(`Diagnostic de stress (${new Date().toLocaleDateString()})`);
+              
+              // Retour à l'écran précédent
+              navigation.goBack();
+            },
+            style: "cancel"
           }
-        }]
+        ]
       );
-    })
-    .catch(error => {
-      Alert.alert("Erreur", error.message || "Impossible de sauvegarder le diagnostic");
-    });
+    }
   };
 
   const styles = StyleSheet.create({
@@ -225,6 +277,22 @@ const HolmesRaheDiagnosticScreen = ({ navigation }) => {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <Banner
+        visible={visible}
+        actions={[
+          {
+            label: 'Se connecter',
+            onPress: () => navigation.navigate('Login'),
+          },
+          {
+            label: 'Fermer',
+            onPress: () => setVisible(false),
+          },
+        ]}
+      >
+        Vous devez être connecté pour sauvegarder vos diagnostics.
+      </Banner>
+
       <View style={styles.header}>
         <Text style={styles.title}>Échelle de stress de Holmes et Rahe</Text>
         <Text style={styles.description}>

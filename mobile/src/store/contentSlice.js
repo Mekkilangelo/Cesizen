@@ -172,6 +172,45 @@ export const getContentStats = createAsyncThunk(
   }
 );
 
+// Récupérer les contenus créés par l'utilisateur
+export const fetchUserContents = createAsyncThunk(
+  'content/fetchUserContents',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get('/contents/user');
+      return response.data.contents;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
+// Récupérer les contenus favoris de l'utilisateur
+export const fetchFavoriteContents = createAsyncThunk(
+  'content/fetchFavoriteContents',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get('/contents/user/favorites');
+      return response.data.contents;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
+// Supprimer un contenu
+export const deleteContent = createAsyncThunk(
+  'content/delete',
+  async (contentId, { rejectWithValue }) => {
+    try {
+      await apiClient.delete(`/contents/${contentId}`);
+      return contentId;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || { message: error.message });
+    }
+  }
+);
+
 const initialState = {
   latestContent: [],
   currentContent: null,
@@ -376,6 +415,59 @@ const contentSlice = createSlice({
         if (state.currentContent && state.currentContent.id === contentId) {
           state.currentContent.userInteractions = userInteractions;
         }
+      })
+
+      // Récupération des contenus de l'utilisateur
+      .addCase(fetchUserContents.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserContents.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.userContents = action.payload;
+      })
+      .addCase(fetchUserContents.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || 'Erreur lors du chargement de vos contenus';
+      })
+      
+      // Récupération des contenus favoris de l'utilisateur
+      .addCase(fetchFavoriteContents.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchFavoriteContents.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.favoriteContents = action.payload;
+      })
+      .addCase(fetchFavoriteContents.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || 'Erreur lors du chargement des favoris';
+      })
+      
+      // Suppression d'un contenu
+      .addCase(deleteContent.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteContent.fulfilled, (state, action) => {
+        state.isLoading = false;
+        // Supprimer le contenu de toutes les listes
+        state.latestContent = state.latestContent.filter(content => content.id !== action.payload);
+        if (state.userContents) {
+          state.userContents = state.userContents.filter(content => content.id !== action.payload);
+        }
+        if (state.favoriteContents) {
+          state.favoriteContents = state.favoriteContents.filter(content => content.id !== action.payload);
+        }
+        // Si le contenu supprimé est le contenu actuel, le réinitialiser
+        if (state.currentContent && state.currentContent.id === action.payload) {
+          state.currentContent = null;
+        }
+      })
+      .addCase(deleteContent.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload?.message || 'Erreur lors de la suppression du contenu';
       });
   },
 });

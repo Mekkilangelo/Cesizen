@@ -30,6 +30,18 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
+// Ajouter des logs supplémentaires pour le débogage
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  if (req.method === 'DELETE') {
+    console.log('=== REQUÊTE DELETE REÇUE ===');
+    console.log('URL:', req.url);
+    console.log('Paramètres:', req.params);
+    console.log('Headers:', req.headers);
+  }
+  next();
+});
+
 // Middleware pour servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

@@ -1,29 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
-import { Text, Searchbar, useTheme, Button, Chip } from 'react-native-paper';
+import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
+import { Text, Searchbar, useTheme, Button, Chip, Divider } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchLatestContent } from '../store/contentSlice';
+import { fetchLatestContent, fetchUserContents, fetchFavoriteContents } from '../store/contentSlice';
 import ContentCard from '../components/ContentCard';
 import useResponsive from '../hooks/useResponsive';
+import { useNavigation } from '@react-navigation/native';
 
 const HomeScreen = () => {
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   const theme = useTheme();
   const { isMobile, isTablet, isDesktop } = useResponsive();
-  const { latestContent, isLoading, error } = useSelector(state => state.contents);
+  const { latestContent, userContents, favoriteContents, isLoading, error } = useSelector(state => state.contents);
+  const { user } = useSelector(state => state.auth);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filtrer les contenus par type
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [filteredContent, setFilteredContent] = useState([]);
+  const [filteredPublicContent, setFilteredPublicContent] = useState([]);
 
   useEffect(() => {
     loadContent();
   }, []);
 
   useEffect(() => {
-    if (latestContent) {
+    if (latestContent && latestContent.length > 0) {
       // Appliquer les filtres
       let filtered = [...latestContent];
       
@@ -40,13 +43,18 @@ const HomeScreen = () => {
         );
       }
       
-      setFilteredContent(filtered);
+      setFilteredPublicContent(filtered);
     }
   }, [latestContent, selectedFilter, searchQuery]);
 
   const loadContent = async () => {
     setRefreshing(true);
-    await dispatch(fetchLatestContent());
+    // Charger tous les contenus requis en parallèle
+    await Promise.all([
+      dispatch(fetchLatestContent()),
+      dispatch(fetchUserContents()),
+      dispatch(fetchFavoriteContents())
+    ]);
     setRefreshing(false);
   };
 
@@ -62,11 +70,11 @@ const HomeScreen = () => {
     setSelectedFilter(filter);
   };
 
-  // Calculer le nombre de colonnes en fonction de la largeur d'écran
-  const getNumColumns = () => {
-    if (isDesktop) return 3;
-    if (isTablet) return 2;
-    return 1;
+  const handleContentPress = (content) => {
+    navigation.navigate('ContentDetailScreen', { 
+      id: content.id,
+      title: content.title
+    });
   };
 
   // Styles
@@ -81,11 +89,18 @@ const HomeScreen = () => {
     header: {
       marginBottom: theme.spacing.md,
       paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.md,
     },
     title: {
       fontSize: theme.fontSize.heading,
       fontWeight: 'bold',
       marginBottom: theme.spacing.sm,
+    },
+    sectionTitle: {
+      fontSize: theme.fontSize.title,
+      fontWeight: 'bold',
+      marginVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
     },
     description: {
       fontSize: theme.fontSize.body,
@@ -93,6 +108,7 @@ const HomeScreen = () => {
       marginBottom: theme.spacing.md,
     },
     searchBar: {
+      marginHorizontal: theme.spacing.md,
       marginBottom: theme.spacing.md,
       borderRadius: theme.borderRadius.medium,
       elevation: 2,
@@ -100,21 +116,22 @@ const HomeScreen = () => {
     filterContainer: {
       flexDirection: 'row',
       marginBottom: theme.spacing.md,
-      paddingHorizontal: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      flexWrap: 'wrap',
     },
     filterChip: {
       marginRight: theme.spacing.sm,
+      marginBottom: theme.spacing.sm,
     },
     noContent: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
       padding: theme.spacing.xl,
+      alignItems: 'center',
     },
     noContentText: {
-      fontSize: theme.fontSize.title,
+      fontSize: theme.fontSize.body,
       textAlign: 'center',
       marginBottom: theme.spacing.md,
+      color: theme.colors.placeholder,
     },
     errorContainer: {
       padding: theme.spacing.lg,
@@ -122,6 +139,20 @@ const HomeScreen = () => {
     },
     errorText: {
       color: theme.colors.error,
+      marginBottom: theme.spacing.md,
+    },
+    sectionContainer: {
+      marginBottom: theme.spacing.lg,
+    },
+    horizontalList: {
+      paddingHorizontal: theme.spacing.sm,
+    },
+    divider: {
+      marginVertical: theme.spacing.md,
+    },
+    viewAllButton: {
+      alignSelf: 'flex-end',
+      marginRight: theme.spacing.md,
       marginBottom: theme.spacing.md,
     }
   });
@@ -161,52 +192,88 @@ const HomeScreen = () => {
   );
 
   // Rendu des états vides
-  const renderEmptyState = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.noContent}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={{ marginTop: theme.spacing.md }}>Chargement des contenus...</Text>
-        </View>
-      );
-    }
+  const renderEmptyState = (message = "Aucun contenu n'est disponible pour le moment") => (
+    <View style={styles.noContent}>
+      <Text style={styles.noContentText}>{message}</Text>
+    </View>
+  );
 
-    if (error) {
-      return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>
-            Une erreur est survenue: {error}
-          </Text>
-          <Button mode="contained" onPress={loadContent}>
-            Réessayer
-          </Button>
-        </View>
-      );
-    }
+  const renderUserContentSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Mes articles</Text>
+      {isLoading && !refreshing ? (
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      ) : userContents && userContents.length > 0 ? (
+        <>
+          <FlatList
+            horizontal
+            data={userContents.slice(0, 5)}
+            keyExtractor={item => `user-${item.id}`}
+            renderItem={({ item }) => (
+              <ContentCard 
+                content={item} 
+                horizontal={true} 
+                onPress={() => handleContentPress(item)}
+                showDeleteButton={true}
+              />
+            )}
+            contentContainerStyle={styles.horizontalList}
+            showsHorizontalScrollIndicator={false}
+          />
+          {userContents.length > 5 && (
+            <Button 
+              mode="text" 
+              style={styles.viewAllButton}
+              onPress={() => navigation.navigate('MyContents')}
+            >
+              Voir tous mes articles
+            </Button>
+          )}
+        </>
+      ) : renderEmptyState("Vous n'avez pas encore créé d'articles")}
+    </View>
+  );
 
-    return (
-      <View style={styles.noContent}>
-        <Text style={styles.noContentText}>
-          {searchQuery || selectedFilter !== 'all' 
-            ? "Aucun contenu ne correspond à votre recherche"
-            : "Aucun contenu n'est disponible pour le moment"}
-        </Text>
-        <Button mode="contained" onPress={loadContent}>
-          Actualiser
-        </Button>
-      </View>
-    );
-  };
+  const renderFavoritesSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Mes favoris</Text>
+      {isLoading && !refreshing ? (
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      ) : favoriteContents && favoriteContents.length > 0 ? (
+        <>
+          <FlatList
+            horizontal
+            data={favoriteContents.slice(0, 5)}
+            keyExtractor={item => `fav-${item.id}`}
+            renderItem={({ item }) => (
+              <ContentCard 
+                content={item} 
+                horizontal={true} 
+                onPress={() => handleContentPress(item)}
+                isFavorite={true}
+              />
+            )}
+            contentContainerStyle={styles.horizontalList}
+            showsHorizontalScrollIndicator={false}
+          />
+          {favoriteContents.length > 5 && (
+            <Button 
+              mode="text" 
+              style={styles.viewAllButton}
+              onPress={() => navigation.navigate('Favorites')}
+            >
+              Voir tous mes favoris
+            </Button>
+          )}
+        </>
+      ) : renderEmptyState("Vous n'avez pas encore ajouté d'articles aux favoris")}
+    </View>
+  );
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Découvrir le contenu</Text>
-        <Text style={styles.description}>
-          Explorez les derniers articles, ressources et tutoriels partagés par la communauté.
-        </Text>
-      </View>
-
+  const renderPublicContentSection = () => (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>Articles publics</Text>
+      
       <Searchbar
         placeholder="Rechercher..."
         onChangeText={handleSearch}
@@ -216,19 +283,61 @@ const HomeScreen = () => {
 
       {renderFilters()}
 
-      <FlatList
-        data={filteredContent}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({ item }) => <ContentCard content={item} />}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-        ListEmptyComponent={renderEmptyState}
-        numColumns={getNumColumns()}
-        key={getNumColumns()} // Force re-render when columns change
-      />
+      {isLoading && !refreshing ? (
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      ) : filteredPublicContent && filteredPublicContent.length > 0 ? (
+        <FlatList
+          data={filteredPublicContent}
+          keyExtractor={item => `public-${item.id}`}
+          renderItem={({ item }) => (
+            <ContentCard 
+              content={item} 
+              onPress={() => handleContentPress(item)}
+              showDeleteButton={user && (user.role === 'admin' || user.id === item.authorId || user.id === item.userId || user.id === item.author?.id)}
+            />
+          )}
+          contentContainerStyle={styles.content}
+          numColumns={getNumColumns()}
+        />
+      ) : renderEmptyState(
+        searchQuery || selectedFilter !== 'all' 
+          ? "Aucun contenu ne correspond à votre recherche"
+          : "Aucun contenu public n'est disponible pour le moment"
+      )}
     </View>
+  );
+
+  // Calculer le nombre de colonnes en fonction de la largeur d'écran
+  const getNumColumns = () => {
+    if (isDesktop) return 3;
+    if (isTablet) return 2;
+    return 1;
+  };
+
+  return (
+    <ScrollView 
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+    >
+      <View style={styles.header}>
+        <Text style={styles.title}>Bienvenue, {user?.username || 'utilisateur'}</Text>
+        <Text style={styles.description}>
+          Explorez les derniers articles, gérez vos favoris et vos publications.
+        </Text>
+      </View>
+
+      {renderUserContentSection()}
+      
+      <Divider style={styles.divider} />
+      
+      {renderFavoritesSection()}
+      
+      <Divider style={styles.divider} />
+      
+      {renderPublicContentSection()}
+    </ScrollView>
   );
 };
 

@@ -17,10 +17,25 @@ if (Platform.OS === 'ios') {
   API_URL = 'http://localhost:5001/api';
 }
 
-// Remplacer par votre adresse IP réelle si vous testez sur un appareil physique
-// API_URL = 'http://192.168.1.116:5001/api';
+// Définir une URL alternative - décommentez et remplacez par votre adresse IP si nécessaire
+// API_URL = 'http://192.168.1.15:5001/api';  // Remplacez par votre adresse IP réelle
 
 console.log('Using API URL:', API_URL);
+
+// Pour le développement Web, créer une fonction pour tester si le serveur est accessible
+const testServerConnection = async () => {
+  try {
+    const response = await fetch(API_URL.replace('/api', ''));
+    console.log('Test de connexion serveur:', response.status);
+    return response.status >= 200 && response.status < 300;
+  } catch (error) {
+    console.error('Erreur de connexion au serveur:', error);
+    return false;
+  }
+};
+
+// Exporter la fonction pour qu'elle puisse être utilisée ailleurs
+export { testServerConnection };
 
 const apiClient = axios.create({
   baseURL: API_URL,

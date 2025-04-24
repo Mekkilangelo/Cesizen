@@ -5,6 +5,7 @@ const { Op } = require('sequelize');
 // Contrôleur pour l'inscription d'un nouvel utilisateur
 exports.register = async (req, res) => {
   try {
+    console.log('Tentative d\'inscription avec:', { email: req.body.email, username: req.body.username });
     const { username, email, password } = req.body;
 
     // Vérifier si l'email ou le nom d'utilisateur existe déjà
@@ -15,39 +16,49 @@ exports.register = async (req, res) => {
     });
 
     if (existingUser) {
+      console.log('Utilisateur existant trouvé:', { email: existingUser.email, username: existingUser.username });
       return res.status(400).json({
         message: 'Cet email ou nom d\'utilisateur est déjà utilisé'
       });
     }
 
     // Créer le nouvel utilisateur
-    const newUser = await User.create({
-      username,
-      email,
-      password,
-      role: 'user'
-    });
+    try {
+      const newUser = await User.create({
+        username,
+        email,
+        password,
+        role: 'user'
+      });
+      
+      console.log('Nouvel utilisateur créé:', { id: newUser.id, username: newUser.username });
 
-    // Générer un token JWT
-    const token = generateToken(newUser);
+      // Générer un token JWT
+      const token = generateToken(newUser);
 
-    // Retourner les informations de l'utilisateur sans le mot de passe
-    const userWithoutPassword = {
-      id: newUser.id,
-      username: newUser.username,
-      email: newUser.email,
-      role: newUser.role
-    };
+      // Retourner les informations de l'utilisateur sans le mot de passe
+      const userWithoutPassword = {
+        id: newUser.id,
+        username: newUser.username,
+        email: newUser.email,
+        role: newUser.role
+      };
 
-    return res.status(201).json({
-      message: 'Utilisateur créé avec succès',
-      user: userWithoutPassword,
-      token
-    });
+      return res.status(201).json({
+        message: 'Utilisateur créé avec succès',
+        user: userWithoutPassword,
+        token
+      });
+    } catch (creationError) {
+      console.error('Erreur lors de la création de l\'utilisateur:', creationError);
+      throw creationError;
+    }
   } catch (error) {
-    console.error('Erreur lors de l\'inscription:', error);
+    console.error('Erreur détaillée lors de l\'inscription:', error);
+    console.error('Stack trace:', error.stack);
     return res.status(500).json({
-      message: 'Erreur serveur lors de l\'inscription'
+      message: 'Erreur serveur lors de l\'inscription',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -55,31 +66,42 @@ exports.register = async (req, res) => {
 // Contrôleur pour la connexion d'un utilisateur
 exports.login = async (req, res) => {
   try {
+    console.log('Tentative de connexion avec:', { email: req.body.email });
     const { email, password } = req.body;
 
     // Trouver l'utilisateur par email
     const user = await User.findOne({ where: { email } });
-
+    
     if (!user) {
+      console.log('Utilisateur non trouvé avec l\'email:', email);
       return res.status(401).json({
         message: 'Email ou mot de passe incorrect'
       });
     }
 
+    console.log('Utilisateur trouvé:', { id: user.id, username: user.username, isActive: user.isActive });
+
     // Vérifier si l'utilisateur est actif
     if (!user.isActive) {
+      console.log('Le compte utilisateur est désactivé');
       return res.status(401).json({
         message: 'Ce compte a été désactivé'
       });
     }
 
     // Vérifier le mot de passe
-    const isPasswordValid = await user.checkPassword(password);
+    try {
+      const isPasswordValid = await user.checkPassword(password);
+      console.log('Résultat de vérification du mot de passe:', isPasswordValid);
 
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        message: 'Email ou mot de passe incorrect'
-      });
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          message: 'Email ou mot de passe incorrect'
+        });
+      }
+    } catch (passwordError) {
+      console.error('Erreur lors de la validation du mot de passe:', passwordError);
+      throw passwordError;
     }
 
     // Mettre à jour la date de dernière connexion
@@ -96,15 +118,19 @@ exports.login = async (req, res) => {
       role: user.role
     };
 
+    console.log('Connexion réussie pour:', userWithoutPassword);
+    
     return res.status(200).json({
       message: 'Connexion réussie',
       user: userWithoutPassword,
       token
     });
   } catch (error) {
-    console.error('Erreur lors de la connexion:', error);
+    console.error('Erreur détaillée lors de la connexion:', error);
+    console.error('Stack trace:', error.stack);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la connexion'
+      message: 'Erreur serveur lors de la connexion',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
