@@ -1,63 +1,59 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 
-// Constants for storage keys
+// Clés pour le stockage sécurisé
 export const STORAGE_KEYS = {
   AUTH_TOKEN: 'userToken',
+  USER_PROFILE: 'userProfile',
+  APP_SETTINGS: 'appSettings',
 };
 
-/**
- * Platform-specific storage implementation
- * Uses AsyncStorage for now, but can be extended to use SecureStore on native platforms
- * once the compatibility issues are resolved
- */
-
-// Get an item from storage
-export const getSecureItem = async (key) => {
+// Fonction pour stocker une valeur de manière sécurisée
+export const setSecureItem = async (key, value) => {
   try {
-    // For now, use AsyncStorage on all platforms until SecureStore issues are resolved
-    const value = await AsyncStorage.getItem(key);
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+    } else {
+      await SecureStore.setItemAsync(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+    return true;
+  } catch (error) {
+    console.error(`Erreur lors du stockage de ${key}:`, error);
+    return false;
+  }
+};
+
+// Fonction pour récupérer une valeur stockée
+export const getSecureItem = async (key, parse = false) => {
+  try {
+    let value;
+    if (Platform.OS === 'web') {
+      value = localStorage.getItem(key);
+    } else {
+      value = await SecureStore.getItemAsync(key);
+    }
+    
+    if (value && parse) {
+      return JSON.parse(value);
+    }
     return value;
   } catch (error) {
-    console.error(`Error reading ${key} from storage:`, error);
+    console.error(`Erreur lors de la récupération de ${key}:`, error);
     return null;
   }
 };
 
-// Save an item to storage
-export const setSecureItem = async (key, value) => {
+// Fonction pour supprimer une valeur stockée
+export const deleteSecureItem = async (key) => {
   try {
-    // For now, use AsyncStorage on all platforms until SecureStore issues are resolved
-    await AsyncStorage.setItem(key, value);
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
     return true;
   } catch (error) {
-    console.error(`Error saving ${key} to storage:`, error);
+    console.error(`Erreur lors de la suppression de ${key}:`, error);
     return false;
   }
 };
-
-// Remove an item from storage
-export const removeSecureItem = async (key) => {
-  try {
-    // For now, use AsyncStorage on all platforms until SecureStore issues are resolved
-    await AsyncStorage.removeItem(key);
-    return true;
-  } catch (error) {
-    console.error(`Error removing ${key} from storage:`, error);
-    return false;
-  }
-};
-
-/*
- * NOTE: Once SecureStore compatibility issues are resolved, you can replace the implementation
- * with platform-specific code like this:
- * 
- * if (Platform.OS === 'ios' || Platform.OS === 'android') {
- *   // Use SecureStore on native platforms
- *   const SecureStore = require('expo-secure-store');
- *   // Use SecureStore functions here
- * } else {
- *   // Use AsyncStorage or localStorage on web/other platforms
- *   // ...
- * }
- */

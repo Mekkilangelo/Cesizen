@@ -216,3 +216,33 @@ exports.changePassword = async (req, res) => {
     });
   }
 };
+
+// Contrôleur pour la déconnexion
+exports.logout = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Vous pourriez enregistrer la date de déconnexion
+    await User.update(
+      { lastLogout: new Date() },
+      { where: { id: userId } }
+    );
+    
+    // Si vous avez une table de tokens révoqués, ajoutez le token actuel
+    // await RevokedToken.create({
+    //   token: req.token,
+    //   userId: userId,
+    //   expiresAt: new Date(req.user.exp * 1000)
+    // });
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Déconnexion réussie'
+    });
+  } catch (error) {
+    console.error('Erreur lors de la déconnexion:', error);
+    return res.status(500).json({
+      message: 'Erreur serveur lors de la déconnexion'
+    });
+  }
+};

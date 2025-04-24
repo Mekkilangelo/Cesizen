@@ -26,7 +26,11 @@
       }
     },
     "web": {
-      "favicon": "./src/assets/favicon.png"
+      "favicon": "./src/assets/favicon.png",
+      "headTags": [
+        { "tag": "link", "attributes": { "rel": "stylesheet", "href": "https://fonts.googleapis.com/icon?family=Material+Icons" }},
+        { "tag": "link", "attributes": { "rel": "stylesheet", "href": "https://cdn.jsdelivr.net/npm/@expo/vector-icons@13.0.0/build/MaterialCommunityIcons.css" }}
+      ]
     },
     "sdkVersion": "52.0.0",
     "newArchEnabled": true

@@ -1,238 +1,203 @@
-const { Comment, User, Diagnostic } = require('../models');
-const { Op } = require('sequelize');
+const { Comment, User, Content } = require('../models');
 
-// Contrôleur pour créer un nouveau commentaire
+// Création d'un nouveau commentaire
 exports.createComment = async (req, res) => {
   try {
-    const { diagnosticId, content, text, relatedContent } = req.body;
+    const { contentId, text, content } = req.body;
     const userId = req.user.id;
-
-    // Vérifier si le diagnostic existe et est accessible
-    const diagnostic = await Diagnostic.findOne({
-      where: {
-        id: diagnosticId,
-        [Op.or]: [
-          { userId },
-          { isPublic: true }
-        ]
-      }
-    });
-
-    if (!diagnostic) {
-      return res.status(404).json({
-        message: 'Diagnostic non trouvé ou accès non autorisé'
-      });
-    }
-
-    // S'assurer qu'on a le contenu du commentaire
-    // Accepter soit 'content' soit 'text' comme champ pour le contenu
-    const commentContent = content || text || relatedContent;
+    
+    // Utilisez content ou text, selon ce qui est disponible
+    const commentContent = content || text;
     
     if (!commentContent) {
       return res.status(400).json({
-        message: 'Le contenu du commentaire est obligatoire'
+        success: false,
+        message: 'Le contenu du commentaire est requis'
       });
     }
-
+    
+    // Vérifier que le contenu existe
+    const contentExists = await Content.findByPk(contentId);
+    if (!contentExists) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Contenu non trouvé' 
+      });
+    }
+    
     // Créer le commentaire
-    const comment = await Comment.create({
+    const newComment = await Comment.create({
       userId,
-      diagnosticId,
-      content: commentContent,
-      relatedContent,
-      isModerated: false
+      contentId,
+      content: commentContent  // Utilisez la variable adaptée
     });
-
-    // Récupérer le commentaire avec les informations de l'utilisateur
-    const commentWithUser = await Comment.findByPk(comment.id, {
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'username']
-        }
-      ]
+    
+    // Récupérer les infos de l'utilisateur pour la réponse
+    const commentWithUser = await Comment.findByPk(newComment.id, {
+      include: [{ model: User, attributes: ['id', 'username'] }]
     });
-
+    
     return res.status(201).json({
-      message: 'Commentaire ajouté avec succès',
+      success: true,
       comment: commentWithUser
     });
   } catch (error) {
     console.error('Erreur lors de la création du commentaire:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la création du commentaire'
+      success: false,
+      message: `Erreur lors de la création du commentaire: ${error.message}`
     });
   }
 };
 
-// Contrôleur pour récupérer les commentaires d'un diagnostic
-exports.getDiagnosticComments = async (req, res) => {
+// Récupération des commentaires d'un contenu
+exports.getContentComments = async (req, res) => {
   try {
-    const { diagnosticId } = req.params;
-    const userId = req.user.id;
-
-    // Vérifier si le diagnostic existe et est accessible
-    const diagnostic = await Diagnostic.findOne({
-      where: {
-        id: diagnosticId,
-        [Op.or]: [
-          { userId },
-          { isPublic: true }
-        ]
-      }
-    });
-
-    if (!diagnostic) {
-      return res.status(404).json({
-        message: 'Diagnostic non trouvé ou accès non autorisé'
+    const { contentId } = req.params;
+    
+    // Vérifier que le contenu existe
+    const content = await Content.findByPk(contentId);
+    if (!content) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Contenu non trouvé' 
       });
     }
-
-    // Récupérer les commentaires
+    
+    // Récupérer les commentaires avec les infos utilisateur
     const comments = await Comment.findAll({
-      where: { 
-        diagnosticId,
-        [Op.or]: [
-          { isModerated: false },
-          { moderatedBy: { [Op.not]: null } }
-        ]
-      },
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'username']
-        }
-      ],
+      where: { contentId },
+      include: [{ model: User, attributes: ['id', 'username'] }],
       order: [['createdAt', 'DESC']]
     });
-
-    return res.status(200).json({ comments });
+    
+    return res.status(200).json({
+      success: true,
+      comments
+    });
   } catch (error) {
     console.error('Erreur lors de la récupération des commentaires:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la récupération des commentaires'
+      success: false,
+      message: `Erreur lors de la récupération des commentaires: ${error.message}`
     });
   }
 };
 
-// Contrôleur pour mettre à jour un commentaire
+// Mise à jour d'un commentaire
 exports.updateComment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { relatedContent } = req.body;
+    const { text } = req.body;
     const userId = req.user.id;
-
-    // Vérifier si le commentaire existe et appartient à l'utilisateur
-    const comment = await Comment.findOne({
-      where: { id, userId }
-    });
-
+    
+    // Récupérer le commentaire
+    const comment = await Comment.findByPk(id);
+    
+    // Vérifier l'existence du commentaire
     if (!comment) {
-      return res.status(404).json({
-        message: 'Commentaire non trouvé ou accès non autorisé'
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Commentaire non trouvé' 
       });
     }
-
+    
+    // Vérifier que l'utilisateur est propriétaire du commentaire
+    if (comment.userId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Vous n\'avez pas les droits pour modifier ce commentaire' 
+      });
+    }
+    
     // Mettre à jour le commentaire
-    await comment.update({ 
-      relatedContent,
-      isModerated: false // Réinitialiser le statut de modération après modification
-    });
-
+    comment.text = text;
+    await comment.save();
+    
     return res.status(200).json({
-      message: 'Commentaire mis à jour avec succès',
+      success: true,
       comment
     });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du commentaire:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la mise à jour du commentaire'
+      success: false,
+      message: `Erreur lors de la mise à jour du commentaire: ${error.message}`
     });
   }
 };
 
-// Contrôleur pour supprimer un commentaire
+// Suppression d'un commentaire
 exports.deleteComment = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const userRole = req.user.role;
-
-    // Vérifier si le commentaire existe
+    
+    // Récupérer le commentaire
     const comment = await Comment.findByPk(id);
-
+    
+    // Vérifier l'existence du commentaire
     if (!comment) {
-      return res.status(404).json({
-        message: 'Commentaire non trouvé'
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Commentaire non trouvé' 
       });
     }
-
-    // Vérifier si l'utilisateur est autorisé à supprimer le commentaire
-    if (comment.userId !== userId && !['admin', 'moderator'].includes(userRole)) {
-      return res.status(403).json({
-        message: 'Accès non autorisé pour supprimer ce commentaire'
+    
+    // Vérifier que l'utilisateur est propriétaire du commentaire
+    if (comment.userId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Vous n\'avez pas les droits pour supprimer ce commentaire' 
       });
     }
-
+    
     // Supprimer le commentaire
     await comment.destroy();
-
+    
     return res.status(200).json({
+      success: true,
       message: 'Commentaire supprimé avec succès'
     });
   } catch (error) {
     console.error('Erreur lors de la suppression du commentaire:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la suppression du commentaire'
+      success: false,
+      message: `Erreur lors de la suppression du commentaire: ${error.message}`
     });
   }
 };
 
-// Contrôleur pour modérer un commentaire (réservé aux modérateurs et administrateurs)
-exports.moderateComment = async (req, res) => {
+// Récupération des commentaires d'un diagnostic
+exports.getDiagnosticComments = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { action } = req.body; // 'approve' ou 'reject'
-    const moderatorId = req.user.id;
-
-    // Vérifier si le commentaire existe
-    const comment = await Comment.findByPk(id);
-
-    if (!comment) {
-      return res.status(404).json({
-        message: 'Commentaire non trouvé'
+    const { diagnosticId } = req.params;
+    
+    // Vérifier que le diagnostic existe
+    const diagnostic = await Diagnostic.findByPk(diagnosticId);
+    if (!diagnostic) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Diagnostic non trouvé' 
       });
     }
-
-    if (action === 'approve') {
-      // Approuver le commentaire
-      await comment.update({
-        isModerated: true,
-        moderatedBy: moderatorId
-      });
-
-      return res.status(200).json({
-        message: 'Commentaire approuvé avec succès',
-        comment
-      });
-    } else if (action === 'reject') {
-      // Rejeter le commentaire (suppression)
-      await comment.destroy();
-
-      return res.status(200).json({
-        message: 'Commentaire rejeté et supprimé avec succès'
-      });
-    } else {
-      return res.status(400).json({
-        message: 'Action de modération non valide'
-      });
-    }
+    
+    // Récupérer les commentaires avec les infos utilisateur
+    const comments = await Comment.findAll({
+      where: { diagnosticId },
+      include: [{ model: User, attributes: ['id', 'username'] }],
+      order: [['createdAt', 'DESC']]
+    });
+    
+    return res.status(200).json({
+      success: true,
+      comments
+    });
   } catch (error) {
-    console.error('Erreur lors de la modération du commentaire:', error);
+    console.error('Erreur lors de la récupération des commentaires du diagnostic:', error);
     return res.status(500).json({
-      message: 'Erreur serveur lors de la modération du commentaire'
+      success: false,
+      message: `Erreur lors de la récupération des commentaires: ${error.message}`
     });
   }
 };

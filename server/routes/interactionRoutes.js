@@ -8,13 +8,7 @@ router.post('/content', verifyToken, interactionController.handleContentInteract
 router.get('/content/:contentId/stats', interactionController.getContentInteractionStats);
 router.get('/content/:contentId/user', verifyToken, interactionController.getUserContentInteractions);
 
-// Routes pour les interactions avec les commentaires
+// Routes pour les interactions avec les commentaires - si implémentées
 router.post('/comment', verifyToken, interactionController.handleCommentInteraction);
-router.get('/comment/:commentId/stats', interactionController.getCommentInteractionStats);
-
-// Routes pour les interactions avec les diagnostics
-router.post('/diagnostic', verifyToken, interactionController.handleDiagnosticInteraction);
-router.get('/diagnostic/:diagnosticId/stats', interactionController.getDiagnosticInteractionStats);
-router.get('/diagnostic/:diagnosticId/user', verifyToken, interactionController.getUserDiagnosticInteractions);
 
 module.exports = router;

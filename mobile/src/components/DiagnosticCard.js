@@ -1,10 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, Alert, TouchableOpacity } from 'react-native';
-import { Card, Text, useTheme, IconButton } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { Card, Text, IconButton, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
-import { deleteDiagnostic, fetchRecentDiagnostics } from '../store/diagnosticSlice';
 import useResponsive from '../hooks/useResponsive';
+import { deleteDiagnostic, fetchRecentDiagnostics } from '../store/diagnosticSlice';
 
 const DiagnosticCard = ({ diagnostic }) => {
   const theme = useTheme();

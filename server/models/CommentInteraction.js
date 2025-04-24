@@ -35,7 +35,8 @@ const CommentInteraction = sequelize.define('CommentInteraction', {
   indexes: [
     {
       unique: true,
-      fields: ['userId', 'commentId', 'type']
+      fields: ['userId', 'commentId', 'type'],
+      name: 'comment_interaction_unique'
     }
   ]
 });

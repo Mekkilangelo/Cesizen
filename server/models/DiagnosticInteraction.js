@@ -35,7 +35,8 @@ const DiagnosticInteraction = sequelize.define('DiagnosticInteraction', {
   indexes: [
     {
       unique: true,
-      fields: ['userId', 'diagnosticId', 'type']
+      fields: ['userId', 'diagnosticId', 'type'],
+      name: 'diagnostic_interaction_unique'
     }
   ]
 });

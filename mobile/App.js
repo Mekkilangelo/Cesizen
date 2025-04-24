@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { Provider as ReduxProvider, useDispatch } from 'react-redux';
+import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

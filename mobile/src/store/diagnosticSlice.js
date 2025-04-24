@@ -7,7 +7,7 @@ export const fetchRecentDiagnostics = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await apiClient.get('/diagnostics/user');
-      return response.data.diagnostics;
+      return response.data.diagnostics || [];
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: error.message });
     }
@@ -59,8 +59,7 @@ export const updateDiagnostic = createAsyncThunk(
   }
 );
 
-// Améliorer l'action deleteDiagnostic pour mieux gérer les erreurs
-
+// Supprimer un diagnostic
 export const deleteDiagnostic = createAsyncThunk(
   'diagnostics/delete',
   async (id, { rejectWithValue }) => {
@@ -73,8 +72,8 @@ export const deleteDiagnostic = createAsyncThunk(
       console.error('Erreur lors de la suppression:', error);
       // Afficher plus de détails sur l'erreur
       if (error.response) {
-        console.error('Données d\'erreur:', error.response.data);
         console.error('Status:', error.response.status);
+        console.error('Data:', error.response.data);
       }
       return rejectWithValue(error.response?.data || { message: error.message || 'Erreur inconnue' });
     }
@@ -110,7 +109,7 @@ const diagnosticSlice = createSlice({
       })
       .addCase(fetchRecentDiagnostics.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.latestDiagnostics = action.payload;
+        state.latestDiagnostics = action.payload || [];
       })
       .addCase(fetchRecentDiagnostics.rejected, (state, action) => {
         state.isLoading = false;
@@ -134,11 +133,10 @@ const diagnosticSlice = createSlice({
       // Création d'un diagnostic
       .addCase(createDiagnostic.pending, (state) => {
         state.isLoading = true;
-        state.error = null;
       })
       .addCase(createDiagnostic.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.latestDiagnostics.unshift(action.payload);
+        state.latestDiagnostics = [action.payload, ...state.latestDiagnostics];
         state.currentDiagnostic = action.payload;
       })
       .addCase(createDiagnostic.rejected, (state, action) => {
@@ -146,47 +144,36 @@ const diagnosticSlice = createSlice({
         state.error = action.payload?.message || 'Erreur lors de la création du test de stress';
       })
       
-      // Mise à jour d'un diagnostic
       .addCase(updateDiagnostic.pending, (state) => {
         state.isLoading = true;
-        state.error = null;
       })
       .addCase(updateDiagnostic.fulfilled, (state, action) => {
         state.isLoading = false;
+        state.latestDiagnostics = state.latestDiagnostics.map(diag =>
+          diag.id === action.payload.id ? action.payload : diag
+        );
         state.currentDiagnostic = action.payload;
-        
-        // Mettre à jour dans la liste des diagnostics récents si présent
-        const index = state.latestDiagnostics.findIndex(diag => diag.id === action.payload.id);
-        if (index !== -1) {
-          state.latestDiagnostics[index] = action.payload;
-        }
       })
       .addCase(updateDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload?.message || 'Erreur lors de la mise à jour du test de stress';
       })
       
-      // Suppression d'un diagnostic
       .addCase(deleteDiagnostic.pending, (state) => {
         state.isLoading = true;
-        state.error = null;
       })
       .addCase(deleteDiagnostic.fulfilled, (state, action) => {
         state.isLoading = false;
-        // Récupérer l'ID du diagnostic supprimé
-        const deletedId = action.payload;
-        // Supprimer de la liste des diagnostics
         state.latestDiagnostics = state.latestDiagnostics.filter(
-          diagnostic => diagnostic.id !== deletedId
+          diag => diag.id !== action.payload
         );
-        // Réinitialiser le diagnostic actuel s'il a été supprimé
-        if (state.currentDiagnostic && state.currentDiagnostic.id === deletedId) {
+        if (state.currentDiagnostic && state.currentDiagnostic.id === action.payload) {
           state.currentDiagnostic = null;
         }
       })
       .addCase(deleteDiagnostic.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload?.message || 'Erreur lors de la suppression du diagnostic';
+        state.error = action.payload?.message || 'Erreur lors de la suppression du test de stress';
       });
   },
 });

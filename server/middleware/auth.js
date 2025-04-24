@@ -5,11 +5,13 @@ const { User } = require('../models');
 const verifyToken = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log("En-tête d'autorisation reçu:", authHeader);
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log("En-tête d'autorisation manquant ou incorrect");
       return res.status(401).json({ 
         success: false,
-        message: 'Accès non autorisé, token manquant' 
+        message: "Authentification requise. Format: 'Bearer [token]'" 
       });
     }
     

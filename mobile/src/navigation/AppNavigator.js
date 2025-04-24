@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
 // Import des écrans
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -12,21 +13,9 @@ import ProfileScreen from '../screens/ProfileScreen';
 import DiagnosticScreen from '../screens/DiagnosticScreen';
 import DiagnosticDetailScreen from '../screens/DiagnosticDetailScreen';
 import HolmesRaheDiagnosticScreen from '../screens/HolmesRaheDiagnosticScreen';
-
-// Écran d'accueil simple
-const HomeScreen = () => (
-  <View style={{flex:1, justifyContent:'center', alignItems:'center', padding: 20}}>
-    <Text style={{fontSize: 22, fontWeight: 'bold', marginBottom: 20}}>
-      Bienvenue sur CesiZen
-    </Text>
-    <Text style={{textAlign: 'center', lineHeight: 24, marginBottom: 20}}>
-      Cette application vous permet d'évaluer votre niveau de stress selon l'échelle Holmes et Rahe.
-    </Text>
-    <Text style={{textAlign: 'center', lineHeight: 24}}>
-      Accédez à l'onglet "Diagnostics" pour réaliser un test de stress ou consulter vos résultats précédents.
-    </Text>
-  </View>
-);
+import CreateContentScreen from '../screens/CreateContentScreen';
+import HomeScreen from '../screens/HomeScreen';
+import ContentDetailScreen from '../screens/ContentDetailScreen';
 
 // Navigation Stack
 const Stack = createNativeStackNavigator();
@@ -37,6 +26,25 @@ const AuthNavigator = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+  </Stack.Navigator>
+);
+
+// Créer un navigateur de pile pour l'écran Home
+const HomeNavigator = () => (
+  <Stack.Navigator>
+    <Stack.Screen 
+      name="HomeScreen" 
+      component={HomeScreen} 
+      options={{ title: 'Accueil', headerShown: true }}
+    />
+    <Stack.Screen 
+      name="ContentDetailScreen" 
+      component={ContentDetailScreen}
+      options={({ route }) => ({ 
+        title: route.params?.title || 'Détail du contenu',
+        headerShown: true
+      })}
+    />
   </Stack.Navigator>
 );
 
@@ -63,7 +71,7 @@ const DiagnosticNavigator = () => (
   </Stack.Navigator>
 );
 
-// Navigation principale simplifiée
+// Navigation principale mise à jour pour utiliser HomeNavigator
 const MainTabNavigator = () => {
   return (
     <Tab.Navigator
@@ -75,9 +83,10 @@ const MainTabNavigator = () => {
     >
       <Tab.Screen 
         name="Home" 
-        component={HomeScreen} 
+        component={HomeNavigator} 
         options={{
           title: 'Accueil',
+          headerShown: false, // Cachez l'en-tête de l'onglet car HomeNavigator a son propre en-tête
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="home" color={color} size={26} />
           ),
@@ -91,6 +100,16 @@ const MainTabNavigator = () => {
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="CreateContent"
+        component={CreateContentScreen}
+        options={{
+          title: 'Créer',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
         }}
       />
@@ -110,11 +129,17 @@ const MainTabNavigator = () => {
 
 // Navigateur principal
 const AppNavigator = () => {
-  const { userToken } = useSelector(state => state.auth);
+  const auth = useSelector(state => state.auth);
+  const { isAuthenticated, token, user } = auth;
+  
+  // Ajouter un log pour déboguer
+  useEffect(() => {
+    console.log('État d\'authentification:', { isAuthenticated, hasToken: !!token, hasUser: !!user });
+  }, [isAuthenticated, token, user]);
   
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {userToken ? (
+      {isAuthenticated ? (
         <Stack.Screen name="Main" component={MainTabNavigator} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />

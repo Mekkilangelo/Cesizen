@@ -1,46 +1,31 @@
-import { useState, useEffect } from 'react';
-import { Dimensions, Platform } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
-export const DEVICE_TYPES = {
-  MOBILE: 'mobile',
-  TABLET: 'tablet',
-  DESKTOP: 'desktop'
-};
-
-// Hook pour obtenir et réagir aux changements de dimensions
-export default function useResponsive() {
-  const [windowDimensions, setWindowDimensions] = useState(
-    Dimensions.get('window')
-  );
+/**
+ * Hook pour gérer la réactivité de l'interface en fonction de la taille de l'écran
+ */
+const useResponsive = () => {
+  const { width, height } = useWindowDimensions();
   
-  // Détecter les changements de taille d'écran
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setWindowDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  // Mobile first: commencer par assumer que c'est un mobile
-  const { width, height } = windowDimensions;
+  // Définir les seuils pour les différentes tailles d'écran
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
+  const isDesktop = width >= 1024;
   
-  const deviceType = Platform.OS !== 'web' 
-    ? DEVICE_TYPES.MOBILE
-    : width < 768 
-      ? DEVICE_TYPES.MOBILE 
-      : width < 1024 
-        ? DEVICE_TYPES.TABLET 
-        : DEVICE_TYPES.DESKTOP;
-
-  // Retourner toutes les infos utiles pour le responsive design
+  // Calculer des espacements dynamiques basés sur la taille de l'écran
+  const getSpacing = (baseMobile, baseTablet, baseDesktop) => {
+    if (isMobile) return baseMobile;
+    if (isTablet) return baseTablet || baseMobile * 1.5;
+    return baseDesktop || baseMobile * 2;
+  };
+  
   return {
     width,
     height,
-    deviceType,
-    isMobile: deviceType === DEVICE_TYPES.MOBILE || Platform.OS !== 'web',
-    isTablet: deviceType === DEVICE_TYPES.TABLET,
-    isDesktop: deviceType === DEVICE_TYPES.DESKTOP,
-    orientation: width > height ? 'landscape' : 'portrait',
+    isMobile,
+    isTablet,
+    isDesktop,
+    getSpacing
   };
-}
+};
+
+export default useResponsive;

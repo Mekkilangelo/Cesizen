@@ -5,13 +5,27 @@ import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../store/authSlice';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }) => {
   const theme = useTheme();
   const dispatch = useDispatch();
   const { user } = useSelector(state => state.auth);
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      
+      // En regardant votre AppNavigator.js, je vois que la navigation 
+      // dépend du state.auth.userToken, pas d'une navigation explicite
+      // Donc ne pas utiliser navigation.navigate ici
+      
+      // Si vous voulez forcer la navigation, utilisez le reset
+      // navigation.reset({
+      //   index: 0,
+      //   routes: [{ name: 'Auth' }],
+      // });
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
   };
 
   // Si on n'a pas d'utilisateur, afficher un message d'erreur

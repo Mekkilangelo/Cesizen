@@ -35,7 +35,8 @@ const ContentInteraction = sequelize.define('ContentInteraction', {
   indexes: [
     {
       unique: true,
-      fields: ['userId', 'contentId', 'type']
+      fields: ['userId', 'contentId', 'type'],
+      name: 'content_interaction_unique'
     }
   ]
 });

@@ -1,73 +1,79 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Share, TouchableOpacity } from 'react-native';
-import { Text, Button, IconButton, Divider, Avatar, Card, useTheme } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Share, Alert, TouchableOpacity } from 'react-native';
+import { Text, Button, Divider, Avatar, Card, useTheme, ActivityIndicator, TextInput } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchContentById, toggleFavorite } from '../store/contentSlice';
+import { 
+  fetchContentById, 
+  toggleLike, 
+  toggleDislike, 
+  toggleFavorite, 
+  addComment,
+  recordContentView,
+  loadContentInteractions,
+  getContentStats,
+  getContentInteractions
+} from '../store/contentSlice';
 import { Ionicons } from '@expo/vector-icons';
 import useResponsive from '../hooks/useResponsive';
 
 const ContentDetailScreen = ({ route, navigation }) => {
-  const { id, title } = route.params || {};
+  const { id } = route.params || {};
   const dispatch = useDispatch();
   const theme = useTheme();
   const { isMobile } = useResponsive();
-  const { currentContent, isLoading } = useSelector(state => state.contents);
-
-  // Simuler un contenu pour le développement
-  const mockContent = currentContent || {
-    id: id || 1,
-    title: title || 'Comment améliorer la productivité de votre entreprise',
-    body: `
-    L'amélioration de la productivité est cruciale pour toute entreprise souhaitant rester compétitive. Voici quelques conseils pratiques pour augmenter l'efficacité de votre équipe sans sacrifier la qualité du travail ou le bien-être des employés.
-
-    **1. Optimiser l'environnement de travail**
-    Un espace de travail bien conçu favorise la concentration et réduit les distractions. Assurez-vous que vos employés disposent de tout le matériel nécessaire et d'un environnement confortable.
-
-    **2. Investir dans la formation continue**
-    Des employés bien formés sont plus efficaces. Proposez régulièrement des formations pour améliorer leurs compétences techniques et leur savoir-faire.
-
-    **3. Encourager la communication**
-    Une communication fluide entre les équipes permet d'éviter les malentendus et les retards. Mettez en place des outils adaptés et encouragez les échanges constructifs.
-    `,
-    author: {
-      id: 2,
-      username: 'ExpertConseil'
-    },
-    createdAt: new Date().toISOString(),
-    type: 'article',
-    tags: ['Productivité', 'Management', 'Ressources Humaines'],
-    stats: {
-      views: 1243,
-      likes: 89,
-      dislikes: 3
-    },
-    comments: [
-      {
-        id: 1,
-        user: { id: 3, username: 'Marie' },
-        content: 'Excellents conseils, merci !',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 2,
-        user: { id: 4, username: 'Thomas' },
-        content: 'J\'ai appliqué la méthode n°2 et les résultats sont impressionnants.',
-        createdAt: new Date(Date.now() - 86400000).toISOString()
-      }
-    ],
-    isFavorite: false
-  };
+  const { currentContent, isLoading, error } = useSelector(state => state.contents);
+  const { isAuthenticated } = useSelector(state => state.auth);
+  const [comment, setComment] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (id) {
-      // Décommenter pour utiliser l'API réelle
-      // dispatch(fetchContentById(id));
+      console.log('Chargement du contenu avec ID:', id);
+      loadContent();
       
-      // Pour le développement, nous utilisons les données simulées
+      // Enregistrer une vue si l'utilisateur est connecté
+      if (isAuthenticated) {
+        dispatch(recordContentView(id));
+      }
+      
+      // Chargez explicitement les statistiques et interactions à l'affichage
+      dispatch(getContentStats(id));
+      
+      if (isAuthenticated) {
+        dispatch(getContentInteractions(id));
+      }
     }
-  }, [id]);
+  }, [id, dispatch, isAuthenticated]);
+
+  const loadContent = () => {
+    if (id) {
+      console.log('Chargement du contenu avec ID:', id);
+      dispatch(fetchContentById(id));
+    }
+  };
+
+  const reloadAllData = async () => {
+    setRefreshing(true);
+    try {
+      // Recharger le contenu
+      await dispatch(fetchContentById(id)).unwrap();
+      
+      // Recharger les statistiques
+      await dispatch(getContentStats(id)).unwrap();
+      
+      // Recharger les interactions si l'utilisateur est connecté
+      if (isAuthenticated) {
+        await dispatch(getContentInteractions(id)).unwrap();
+      }
+    } catch (error) {
+      console.error('Erreur lors du rechargement des données:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'Date inconnue';
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR', {
       day: 'numeric',
@@ -76,33 +82,93 @@ const ContentDetailScreen = ({ route, navigation }) => {
     });
   };
 
-  const handleShare = async () => {
+  // Actions d'interaction
+  const handleLike = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour aimer ce contenu');
+      return;
+    }
+    
     try {
-      await Share.share({
-        message: `Découvrez cet article sur CesiZen: ${mockContent.title}`,
-      });
+      await dispatch(toggleLike(id)).unwrap();
+      
+      // Recharger les statistiques et interactions après l'action
+      await dispatch(getContentStats(id)).unwrap();
+      await dispatch(getContentInteractions(id)).unwrap();
     } catch (error) {
-      alert(`Erreur lors du partage: ${error.message}`);
+      Alert.alert('Erreur', 'Impossible d\'ajouter un like pour le moment');
     }
   };
 
-  const handleFavorite = () => {
-    // Décommenter pour utiliser l'API réelle
-    // dispatch(toggleFavorite(mockContent.id));
+  const handleDislike = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour ne pas aimer ce contenu');
+      return;
+    }
     
-    // Pour le développement
-    alert(`${mockContent.isFavorite ? 'Retrait des favoris' : 'Ajout aux favoris'}`);
+    setRefreshing(true);
+    try {
+      await dispatch(toggleDislike(id)).unwrap();
+      await dispatch(getContentStats(id)).unwrap(); // Recharger les stats
+      await dispatch(getContentInteractions(id)).unwrap(); // Recharger les interactions
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ajouter un dislike pour le moment');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const handleComment = () => {
-    alert('Ajouter un commentaire');
+  const handleFavorite = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour ajouter aux favoris');
+      return;
+    }
+    
+    setRefreshing(true);
+    try {
+      await dispatch(toggleFavorite(id)).unwrap();
+      await dispatch(getContentStats(id)).unwrap(); // Recharger les stats
+      await dispatch(getContentInteractions(id)).unwrap(); // Recharger les interactions
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ajouter aux favoris pour le moment');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  const TouchableWithText = ({ children, style, onPress }) => (
-    <TouchableOpacity style={style} onPress={onPress}>
-      <Text style={styles.actionText}>{children}</Text>
-    </TouchableOpacity>
-  );
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Découvrez cet article sur CesiZen: ${currentContent?.title}`,
+        title: currentContent?.title,
+      });
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de partager ce contenu pour le moment');
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!isAuthenticated) {
+      Alert.alert('Connexion requise', 'Vous devez être connecté pour commenter');
+      return;
+    }
+    
+    if (!comment.trim()) {
+      Alert.alert('Erreur', 'Votre commentaire ne peut pas être vide');
+      return;
+    }
+    
+    setRefreshing(true);
+    try {
+      await dispatch(addComment({ contentId: id, text: comment })).unwrap();
+      setComment('');
+      reloadAllData(); // Recharger toutes les données pour voir le nouveau commentaire
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ajouter votre commentaire pour le moment');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -110,215 +176,290 @@ const ContentDetailScreen = ({ route, navigation }) => {
       backgroundColor: theme.colors.background,
     },
     content: {
-      padding: theme.spacing.md,
-      maxWidth: isMobile ? undefined : 800,
-      alignSelf: isMobile ? undefined : 'center',
-      width: '100%',
-    },
-    header: {
-      marginBottom: theme.spacing.lg,
+      padding: 16,
     },
     title: {
-      fontSize: theme.fontSize.largeHeading,
+      fontSize: 24,
       fontWeight: 'bold',
-      color: theme.colors.text,
-      marginBottom: theme.spacing.sm,
+      marginBottom: 12,
     },
     meta: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: theme.spacing.md,
+      marginBottom: 16,
     },
     authorContainer: {
       flexDirection: 'row',
       alignItems: 'center',
     },
     authorName: {
-      marginLeft: theme.spacing.xs,
-      fontSize: theme.fontSize.body,
+      marginLeft: 8,
+      fontSize: 14,
       color: theme.colors.primary,
     },
     date: {
-      marginLeft: theme.spacing.md,
-      fontSize: theme.fontSize.caption,
+      marginLeft: 16,
+      fontSize: 12,
       color: theme.colors.placeholder,
     },
-    tags: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginBottom: theme.spacing.md,
-    },
-    tag: {
-      backgroundColor: '#E0F2F1',
-      marginRight: theme.spacing.xs,
-      marginBottom: theme.spacing.xs,
-    },
     body: {
-      fontSize: theme.fontSize.body,
+      fontSize: 16,
       lineHeight: 24,
-      color: theme.colors.text,
-      marginBottom: theme.spacing.xl,
+      marginBottom: 24,
     },
     actionsContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      marginBottom: theme.spacing.lg,
+      marginVertical: 16,
+      paddingHorizontal: 8,
     },
     actionButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: theme.spacing.sm,
+      padding: 8,
     },
     actionText: {
-      marginLeft: theme.spacing.xs,
-      color: theme.colors.primary,
+      marginLeft: 4,
+      fontSize: 14,
     },
     statsContainer: {
       flexDirection: 'row',
-      marginBottom: theme.spacing.lg,
+      marginBottom: 16,
+      marginTop: 8,
     },
     stat: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginRight: theme.spacing.lg,
+      marginRight: 16,
     },
     statValue: {
-      marginLeft: theme.spacing.xs,
+      marginLeft: 4,
       color: theme.colors.placeholder,
     },
     commentsHeader: {
-      fontSize: theme.fontSize.title,
+      fontSize: 18,
       fontWeight: 'bold',
-      marginBottom: theme.spacing.md,
+      marginTop: 16,
+      marginBottom: 8,
     },
     commentCard: {
-      marginBottom: theme.spacing.md,
-    },
-    commentHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: theme.spacing.xs,
+      marginBottom: 8,
     },
     commentAuthor: {
       fontWeight: 'bold',
-      marginLeft: theme.spacing.xs,
+      fontSize: 14,
     },
     commentDate: {
-      fontSize: theme.fontSize.caption,
+      fontSize: 12,
       color: theme.colors.placeholder,
-      marginLeft: 'auto',
     },
-    commentContent: {
-      fontSize: theme.fontSize.body,
+    commentInput: {
+      marginTop: 16,
+      marginBottom: 8,
     },
-    addCommentButton: {
-      marginTop: theme.spacing.md,
+    loading: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
     },
+    error: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    errorText: {
+      color: theme.colors.error,
+      marginBottom: 20,
+      textAlign: 'center',
+    }
   });
 
+  // États de chargement et erreur
+  if (isLoading && !currentContent) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text>Chargement du contenu...</Text>
+      </View>
+    );
+  }
+
+  if (error && !currentContent) {
+    return (
+      <View style={styles.error}>
+        <Text style={styles.errorText}>{error}</Text>
+        <Button mode="contained" onPress={loadContent}>Réessayer</Button>
+      </View>
+    );
+  }
+
+  if (!currentContent) {
+    return (
+      <View style={styles.error}>
+        <Text style={styles.errorText}>Contenu introuvable</Text>
+        <Button mode="contained" onPress={() => navigation.goBack()}>Retour</Button>
+      </View>
+    );
+  }
+
+  // Ajoutez des logs pour déboguer
+  console.log('Current content:', currentContent);
+  console.log('User interactions:', currentContent?.userInteractions);
+  console.log('Stats:', currentContent?.stats);
+
+  // Assurez-vous que les données sont correctement initialisées
+  const userInteractions = currentContent.userInteractions || {};
+  const stats = currentContent.stats || { 
+    views: 0, 
+    likes: 0, 
+    dislikes: 0,
+    favorites: 0
+  };
+
+  // Données du contenu
+  const comments = currentContent.comments || [];
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{mockContent.title}</Text>
-          
-          <View style={styles.meta}>
-            <View style={styles.authorContainer}>
-              <Avatar.Text 
-                size={24} 
-                label={mockContent.author.username.substring(0, 2)} 
-                color="white"
-                style={{ backgroundColor: theme.colors.primary }}
-              />
-              <Text style={styles.authorName}>{mockContent.author.username}</Text>
-            </View>
-            <Text style={styles.date}>{formatDate(mockContent.createdAt)}</Text>
-          </View>
-          
-          <View style={styles.tags}>
-            {mockContent.tags.map((tag, index) => (
-              <Button
-                key={index}
-                mode="outlined"
-                style={styles.tag}
-                compact
-              >
-                {tag}
-              </Button>
-            ))}
-          </View>
-        </View>
-        
-        <Text style={styles.body}>{mockContent.body}</Text>
-        
-        <View style={styles.statsContainer}>
-          <View style={styles.stat}>
-            <Ionicons name="eye-outline" size={20} color={theme.colors.placeholder} />
-            <Text style={styles.statValue}>{mockContent.stats.views}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="heart-outline" size={20} color={theme.colors.placeholder} />
-            <Text style={styles.statValue}>{mockContent.stats.likes}</Text>
-          </View>
-          <View style={styles.stat}>
-            <Ionicons name="chatbubble-outline" size={20} color={theme.colors.placeholder} />
-            <Text style={styles.statValue}>{mockContent.comments.length}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
-            <Ionicons 
-              name={mockContent.isFavorite ? "heart" : "heart-outline"} 
-              size={24} 
-              color={mockContent.isFavorite ? theme.colors.error : theme.colors.primary} 
-            />
-            <Text style={styles.actionText}>
-              {mockContent.isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={24} color={theme.colors.primary} />
-            <Text style={styles.actionText}>Partager</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <Divider />
-        
-        <View style={{ marginTop: theme.spacing.lg }}>
-          <Text style={styles.commentsHeader}>
-            Commentaires ({mockContent.comments.length})
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
+      <Text style={styles.title}>{currentContent.title}</Text>
+      
+      <View style={styles.meta}>
+        <View style={styles.authorContainer}>
+          <Avatar.Text 
+            size={24} 
+            label={(currentContent.author?.username || 'U').substring(0, 2).toUpperCase()}
+            color="white"
+          />
+          <Text style={styles.authorName}>
+            {currentContent.author?.username || 'Utilisateur inconnu'}
           </Text>
-          
-          {mockContent.comments.map(comment => (
-            <Card key={comment.id} style={styles.commentCard}>
-              <Card.Content>
-                <View style={styles.commentHeader}>
-                  <Avatar.Text 
-                    size={24} 
-                    label={comment.user.username.substring(0, 2)} 
-                    color="white"
-                    style={{ backgroundColor: theme.colors.secondary }}
-                  />
-                  <Text style={styles.commentAuthor}>{comment.user.username}</Text>
-                  <Text style={styles.commentDate}>{formatDate(comment.createdAt)}</Text>
-                </View>
-                <Text style={styles.commentContent}>{comment.content}</Text>
-              </Card.Content>
-            </Card>
-          ))}
-          
-          <Button 
-            mode="contained" 
-            onPress={handleComment}
-            style={styles.addCommentButton}
-            icon="comment-plus"
-          >
-            Ajouter un commentaire
-          </Button>
+        </View>
+        <Text style={styles.date}>{formatDate(currentContent.createdAt)}</Text>
+      </View>
+      
+      <Text style={styles.body}>{currentContent.body}</Text>
+      
+      {/* Statistiques */}
+      <View style={styles.statsContainer}>
+        <View style={styles.stat}>
+          <Ionicons name="eye-outline" size={16} color={theme.colors.placeholder} />
+          <Text style={styles.statValue}>{stats.views || 0}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Ionicons name="heart-outline" size={16} color={theme.colors.placeholder} />
+          <Text style={styles.statValue}>{stats.likes || 0}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Ionicons name="thumbs-down-outline" size={16} color={theme.colors.placeholder} />
+          <Text style={styles.statValue}>{stats.dislikes || 0}</Text>
+        </View>
+        <View style={styles.stat}>
+          <Ionicons name="chatbubble-outline" size={16} color={theme.colors.placeholder} />
+          <Text style={styles.statValue}>{comments.length || 0}</Text>
         </View>
       </View>
+      
+      {/* Actions */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+          <Ionicons 
+            name={userInteractions.like ? "heart" : "heart-outline"} 
+            size={20} 
+            color={userInteractions.like ? theme.colors.primary : theme.colors.text} 
+          />
+          <Text style={[styles.actionText, userInteractions.like && {color: theme.colors.primary}]}>
+            J'aime
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton} onPress={handleDislike}>
+          <Ionicons 
+            name={userInteractions.dislike ? "thumbs-down" : "thumbs-down-outline"} 
+            size={20} 
+            color={userInteractions.dislike ? theme.colors.error : theme.colors.text} 
+          />
+          <Text style={[styles.actionText, userInteractions.dislike && {color: theme.colors.error}]}>
+            Je n'aime pas
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton} onPress={handleFavorite}>
+          <Ionicons 
+            name={userInteractions.favorite ? "bookmark" : "bookmark-outline"} 
+            size={20} 
+            color={userInteractions.favorite ? theme.colors.primary : theme.colors.text} 
+          />
+          <Text style={[styles.actionText, userInteractions.favorite && {color: theme.colors.primary}]}>
+            Favori
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+          <Ionicons name="share-social-outline" size={20} color={theme.colors.text} />
+          <Text style={styles.actionText}>Partager</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <Divider />
+      
+      {/* Commentaires */}
+      <Text style={styles.commentsHeader}>
+        Commentaires ({comments.length || 0})
+      </Text>
+      
+      {comments.length > 0 ? (
+        comments.map((comment, index) => (
+          <Card key={index} style={styles.commentCard}>
+            <Card.Content>
+              <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
+                <Text style={styles.commentAuthor}>
+                  {comment.user?.username || 'Utilisateur anonyme'}
+                </Text>
+                <Text style={styles.commentDate}>
+                  {formatDate(comment.createdAt)}
+                </Text>
+              </View>
+              <Text>{comment.text || comment.content}</Text>
+            </Card.Content>
+          </Card>
+        ))
+      ) : (
+        <Text style={{fontStyle: 'italic', color: theme.colors.placeholder}}>
+          Aucun commentaire pour le moment.
+        </Text>
+      )}
+      
+      {/* Ajouter un commentaire */}
+      <TextInput
+        label="Ajouter un commentaire"
+        value={comment}
+        onChangeText={setComment}
+        style={styles.commentInput}
+        multiline
+        disabled={!isAuthenticated || refreshing}
+      />
+      
+      <Button 
+        mode="contained" 
+        onPress={handleSubmitComment}
+        disabled={!isAuthenticated || !comment.trim() || refreshing}
+        loading={refreshing}
+      >
+        Commenter
+      </Button>
+      
+      <Button 
+        mode="outlined" 
+        onPress={() => navigation.goBack()}
+        style={{marginTop: 16}}
+      >
+        Retour
+      </Button>
     </ScrollView>
   );
 };
