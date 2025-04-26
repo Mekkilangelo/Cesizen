@@ -40,8 +40,16 @@ jest.mock('../../models', () => ({
   }
 }));
 
-// Mock pour jsonwebtoken
-jest.mock('jsonwebtoken');
+// Mock pour jsonwebtoken plus robuste qui gère correctement les tokens
+jest.mock('jsonwebtoken', () => ({
+  verify: jest.fn().mockImplementation((token, secret) => {
+    if (token === 'invalid-token') {
+      throw new Error('Invalid token');
+    }
+    return { id: '123', username: 'testuser', email: 'test@example.com', role: 'user' };
+  }),
+  sign: jest.fn().mockReturnValue('fake-jwt-token')
+}));
 
 describe('Tests de non-régression - Parcours utilisateur complet', () => {
   let token, userId;
@@ -61,10 +69,9 @@ describe('Tests de non-régression - Parcours utilisateur complet', () => {
     User.findByPk.mockResolvedValue(mockUser);
     User.findOne.mockResolvedValue(mockUser);
     
-    // Simuler la vérification du token JWT
-    jwt.verify.mockImplementation((token, secret, callback) => {
-      callback(null, { id: userId });
-    });
+    // Simuler la vérification du token JWT avec une implémentation synchrone
+    // au lieu d'un callback pour correspondre à l'implémentation réelle
+    jwt.verify.mockReturnValue({ id: userId });
     
     // Créer un token d'authentification pour les tests
     token = 'fake-jwt-token';
@@ -78,6 +85,10 @@ describe('Tests de non-régression - Parcours utilisateur complet', () => {
       password: 'Password123',
       username: 'nouveauuser'
     };
+    
+    // Configurer le mock pour qu'il retourne un nouvel utilisateur et non un utilisateur existant
+    User.findOne.mockResolvedValueOnce(null); // L'email n'existe pas déjà
+    User.findOne.mockResolvedValueOnce(null); // Le username n'existe pas déjà
     
     User.create.mockResolvedValue({
       id: '456',
@@ -109,9 +120,12 @@ describe('Tests de non-régression - Parcours utilisateur complet', () => {
     
     // 3. Création d'un diagnostic de stress Holmes-Rahe
     const diagnosticData = {
-      score: 150,
-      responses: [{ questionId: 1, value: true }, { questionId: 2, value: false }],
-      stressLevel: 'Modéré'
+      title: 'Mon diagnostic de stress',
+      responses: { "1": 30, "2": 25, "3": 35 }, // Utiliser un objet pour les réponses, pas un tableau
+      rawScore: 150, // Utiliser rawScore au lieu de score
+      isHolmesRahe: true, // Spécifier qu'il s'agit d'un diagnostic Holmes-Rahe
+      diagnosticType: 'holmes-rahe', // Spécifier le type
+      isPublic: true
     };
     
     const createdDiagnostic = {

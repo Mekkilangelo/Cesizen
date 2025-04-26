@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { auth, adminAuth } = require('../../middleware/auth');
+const { verifyToken, isAdmin } = require('../../middleware/auth');
 const { User } = require('../../models');
 
 // Mock de jsonwebtoken
@@ -39,7 +39,7 @@ describe('Auth Middleware', () => {
       const mockUser = { id: 1, username: 'testuser' };
       User.findByPk.mockResolvedValue(mockUser);
       
-      await auth(req, res, next);
+      await verifyToken(req, res, next);
       
       expect(jwt.verify).toHaveBeenCalledWith('validtoken123', process.env.JWT_SECRET || 'secret');
       expect(User.findByPk).toHaveBeenCalledWith(1);
@@ -50,7 +50,7 @@ describe('Auth Middleware', () => {
     test('devrait retourner 401 si le token n\'est pas fourni', async () => {
       req.headers.authorization = undefined;
       
-      await auth(req, res, next);
+      await verifyToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
@@ -65,7 +65,7 @@ describe('Auth Middleware', () => {
         throw new Error('Invalid token');
       });
       
-      await auth(req, res, next);
+      await verifyToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
@@ -81,7 +81,7 @@ describe('Auth Middleware', () => {
       
       User.findByPk.mockResolvedValue(null);
       
-      await auth(req, res, next);
+      await verifyToken(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
@@ -100,7 +100,8 @@ describe('Auth Middleware', () => {
       const mockAdmin = { id: 1, username: 'admin', role: 'admin' };
       User.findByPk.mockResolvedValue(mockAdmin);
       
-      await adminAuth(req, res, next);
+      req.user = mockAdmin;
+      await isAdmin(req, res, next);
       
       expect(jwt.verify).toHaveBeenCalledWith('validtoken123', process.env.JWT_SECRET || 'secret');
       expect(User.findByPk).toHaveBeenCalledWith(1);
@@ -115,7 +116,8 @@ describe('Auth Middleware', () => {
       const mockUser = { id: 1, username: 'user', role: 'user' };
       User.findByPk.mockResolvedValue(mockUser);
       
-      await adminAuth(req, res, next);
+      req.user = mockUser;
+      await isAdmin(req, res, next);
       
       expect(res.status).toHaveBeenCalledWith(403);
       expect(res.json).toHaveBeenCalledWith({

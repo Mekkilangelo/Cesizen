@@ -1,9 +1,13 @@
 const diagnosticController = require('../../controller/diagnosticController');
-const { Diagnostic } = require('../../models');
+const { Diagnostic, DiagnosticInteraction } = require('../../models');
 
+// Mise à jour du mock pour inclure DiagnosticInteraction
 jest.mock('../../models', () => ({
   Diagnostic: {
     findOne: jest.fn(),
+  },
+  DiagnosticInteraction: {
+    destroy: jest.fn().mockResolvedValue(true)
   }
 }));
 
@@ -41,10 +45,16 @@ describe('Diagnostic Controller - deleteDiagnostic', () => {
     expect(Diagnostic.findOne).toHaveBeenCalledWith({ 
       where: { id: '1', userId: '123' } 
     });
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ 
-      message: 'Diagnostic supprimé avec succès' 
+    expect(DiagnosticInteraction.destroy).toHaveBeenCalledWith({
+      where: { diagnosticId: '1' }
     });
+    expect(mockDiagnostic.destroy).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ 
+        message: 'Diagnostic supprimé avec succès'
+      })
+    );
   });
   
   test('devrait retourner 404 si le diagnostic n\'existe pas', async () => {
@@ -56,9 +66,10 @@ describe('Diagnostic Controller - deleteDiagnostic', () => {
     
     // Vérifications
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith({ 
-      message: 'Diagnostic non trouvé ou accès non autorisé' 
-    });
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ 
+      message: 'Diagnostic non trouvé ou accès non autorisé',
+      success: false
+    }));
   });
   
   test('devrait gérer les erreurs et retourner 500', async () => {

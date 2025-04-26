@@ -9,6 +9,15 @@ describe('Complete User Journey', () => {
   let diagnosticId;
   let contentId;
   
+  // Nettoyer avant et après les tests pour garantir un environnement propre
+  beforeAll(async () => {
+    // Nettoyer les données existantes qui pourraient interférer avec nos tests
+    await Comment.destroy({ where: {} });
+    await Diagnostic.destroy({ where: {} });
+    await Content.destroy({ where: {} });
+    await User.destroy({ where: { email: 'journey@example.com' } });
+  });
+  
   // Nettoyer après tous les tests
   afterAll(async () => {
     await Comment.destroy({ where: {} });
@@ -41,12 +50,18 @@ describe('Complete User Journey', () => {
       .send({
         title: 'Journey Diagnostic',
         responses: { "1": 9, "2": "option_1" },
-        score: 85, // Ajout du score
-        riskLevel: 'low', // Ajout du niveau de risque
+        rawScore: 85,  // Utiliser rawScore au lieu de score
+        diagnosticType: 'general',  // Ajouter le type de diagnostic
+        riskLevel: 'low',  // Spécifier le niveau de risque
         recommendations: 'Test recommendations',
         isPublic: true
       });
       
+    // En cas d'échec, imprimer l'erreur pour faciliter le débogage
+    if (res.statusCode !== 201) {
+      console.log('Erreur lors de la création du diagnostic:', res.body);
+    }
+    
     expect(res.statusCode).toBe(201);
     
     // Stocker l'ID du diagnostic

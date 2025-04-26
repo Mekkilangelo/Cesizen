@@ -511,6 +511,16 @@ exports.saveDiagnosticResult = async (req, res) => {
 
     // S'assurer que le score est correctement défini
     let score = rawScore;
+    
+    // Si score est undefined, essayer d'extraire la valeur depuis l'objet directement
+    if (score === undefined && req.body.score !== undefined) {
+      score = req.body.score;
+    }
+    
+    // Si toujours undefined, générer une erreur explicite
+    if (score === undefined) {
+      throw new Error('Le score est requis pour créer un diagnostic');
+    }
 
     // Calculer le niveau de risque basé sur le score
     let riskLevel;
@@ -529,8 +539,8 @@ exports.saveDiagnosticResult = async (req, res) => {
     const diagnostic = await Diagnostic.create({
       userId,
       title: title || `Diagnostic ${diagnosticType || 'holmes-rahe'} - ${new Date().toLocaleString()}`,
-      score, // Assurez-vous que score est défini
-      riskLevel, // Assurez-vous que riskLevel est défini
+      score, // Assurer que score est défini
+      riskLevel, // Assurer que riskLevel est défini
       responses,
       recommendations,
       isPublic: isPublic || false,

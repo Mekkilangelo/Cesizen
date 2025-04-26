@@ -49,13 +49,15 @@ describe('Diagnostic Routes', () => {
   });
   
   test('POST /api/diagnostics should create a new diagnostic', async () => {
+    // Utiliser saveDiagnosticResult au lieu de createDiagnostic, car c'est la méthode qui est utilisée pour enregistrer des diagnostics
     const newDiagnostic = {
       title: 'New Test Diagnostic',
       responses: { "1": 7, "2": "option_2", "3": 4 },
-      riskLevel: 'moderate', // Ajout du champ obligatoire riskLevel
-      score: 150,
+      riskLevel: 'moderate',
+      rawScore: 150, // Utiliser rawScore au lieu de score
       recommendations: 'Test recommendations',
-      isPublic: true
+      isPublic: true,
+      diagnosticType: 'general' // Ajouter le type de diagnostic
     };
     
     const response = await request(app)
@@ -68,19 +70,23 @@ describe('Diagnostic Routes', () => {
     expect(response.body.diagnostic.userId).toBe(userId);
     
     // Nettoyer le diagnostic créé
-    await Diagnostic.destroy({ where: { id: response.body.diagnostic.id } });
+    if (response.body.diagnostic && response.body.diagnostic.id) {
+      await Diagnostic.destroy({ where: { id: response.body.diagnostic.id } });
+    }
   });
 
   test('DELETE /api/diagnostics/:id devrait supprimer un diagnostic existant', async () => {
-    // Créer d'abord un diagnostic à supprimer
+    // Créer d'abord un diagnostic à supprimer avec tous les champs requis
     const diagnostic = await Diagnostic.create({
       userId: userId,
       title: 'Test pour suppression',
-      score: 150,
+      score: 150, // Assurer que score est défini
       responses: { "1": true, "5": true },
       riskLevel: 'moderate',
       recommendations: 'Test recommendations',
-      isPublic: false
+      isPublic: false,
+      completedAt: new Date(), // Ajouter la date de complétion
+      diagnosticType: 'general' // Ajouter le type de diagnostic
     });
     
     const response = await request(app)

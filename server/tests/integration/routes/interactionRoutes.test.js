@@ -29,8 +29,16 @@ jest.mock('../../../models', () => ({
   }
 }));
 
-// Mock pour jsonwebtoken
-jest.mock('jsonwebtoken');
+// Mock pour jsonwebtoken plus robuste qui fonctionne dans tous les cas
+jest.mock('jsonwebtoken', () => ({
+  verify: jest.fn().mockImplementation((token, secret) => {
+    if (token === 'invalid-token') {
+      throw new Error('Invalid token');
+    }
+    return { id: '123', username: 'testuser', email: 'test@example.com', role: 'user' };
+  }),
+  sign: jest.fn().mockReturnValue('fake-jwt-token')
+}));
 
 describe('Interaction Routes - Tests d\'intégration', () => {
   let token;
@@ -42,11 +50,6 @@ describe('Interaction Routes - Tests d\'intégration', () => {
     const mockUser = { id: '123', email: 'test@example.com', role: 'user' };
     User.findByPk.mockResolvedValue(mockUser);
     User.findOne.mockResolvedValue(mockUser);
-    
-    // Simuler la vérification du token JWT
-    jwt.verify.mockImplementation((token, secret, callback) => {
-      callback(null, { id: '123' });
-    });
     
     // Créer un token d'authentification pour les tests
     token = 'fake-jwt-token';
@@ -81,11 +84,6 @@ describe('Interaction Routes - Tests d\'intégration', () => {
     });
     
     test('devrait retourner 401 si l\'utilisateur n\'est pas authentifié', async () => {
-      // Simuler la vérification du token JWT échouant
-      jwt.verify.mockImplementation((token, secret, callback) => {
-        callback(new Error('Invalid token'), null);
-      });
-      
       // Effectuer la requête sans token valide
       const response = await request(app)
         .post('/api/interactions/content')
@@ -220,11 +218,6 @@ describe('Interaction Routes - Tests d\'intégration', () => {
     });
     
     test('devrait retourner 401 si l\'utilisateur n\'est pas authentifié', async () => {
-      // Simuler la vérification du token JWT échouant
-      jwt.verify.mockImplementation((token, secret, callback) => {
-        callback(new Error('Invalid token'), null);
-      });
-      
       // Effectuer la requête sans token valide
       const response = await request(app)
         .get('/api/interactions/diagnostic/1/user')
