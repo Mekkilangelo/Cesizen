@@ -45,9 +45,10 @@ const ProfileScreen = ({ navigation }) => {
             size={80} 
             label={user.username.substring(0, 2).toUpperCase()} 
             backgroundColor={theme.colors.primary}
+            testID="user-menu-button"
           />
-          <Text style={styles.username}>{user.username}</Text>
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.username} testID="profile-username">{user.username}</Text>
+          <Text style={styles.email} testID="profile-email">{user.email}</Text>
         </View>
 
         <Card style={styles.card}>
@@ -76,6 +77,7 @@ const ProfileScreen = ({ navigation }) => {
           onPress={handleLogout}
           style={styles.logoutButton}
           icon="logout"
+          testID="logout-button"
         >
           Se déconnecter
         </Button>

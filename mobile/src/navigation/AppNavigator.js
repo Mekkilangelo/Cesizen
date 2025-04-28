@@ -92,6 +92,7 @@ const GuestTabNavigator = () => (
         tabBarIcon: ({ color }) => (
           <MaterialCommunityIcons name="home" color={color} size={26} />
         ),
+        tabBarTestID: "guest-tab-home"
       }}
     />
     <Tab.Screen 
@@ -103,6 +104,7 @@ const GuestTabNavigator = () => (
         tabBarIcon: ({ color }) => (
           <MaterialCommunityIcons name="file-document" color={color} size={26} />
         ),
+        tabBarTestID: "guest-tab-content"
       }}
     />
     <Tab.Screen 
@@ -114,6 +116,7 @@ const GuestTabNavigator = () => (
         tabBarIcon: ({ color }) => (
           <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
         ),
+        tabBarTestID: "guest-tab-diagnostic"
       }}
     />
     <Tab.Screen 
@@ -124,6 +127,7 @@ const GuestTabNavigator = () => (
         tabBarIcon: ({ color }) => (
           <MaterialCommunityIcons name="login" color={color} size={26} />
         ),
+        tabBarTestID: "guest-tab-login"
       }}
     />
   </Tab.Navigator>
@@ -201,6 +205,7 @@ const UserTabNavigator = () => {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="home" color={color} size={26} />
           ),
+          tabBarTestID: "bottom-tab-home"
         }}
       />
       <Tab.Screen 
@@ -212,6 +217,7 @@ const UserTabNavigator = () => {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="heart-pulse" color={color} size={26} />
           ),
+          tabBarTestID: "bottom-tab-diagnostic"
         }}
       />
       <Tab.Screen 
@@ -222,6 +228,7 @@ const UserTabNavigator = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="add-circle-outline" size={size} color={color} />
           ),
+          tabBarTestID: "bottom-tab-create"
         }}
       />
       <Tab.Screen 
@@ -232,6 +239,7 @@ const UserTabNavigator = () => {
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="account" color={color} size={26} />
           ),
+          tabBarTestID: "bottom-tab-profile"
         }}
       />
     </Tab.Navigator>

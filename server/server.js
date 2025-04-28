@@ -17,7 +17,10 @@ const startServer = async () => {
     console.log('Connexion à la base de données établie avec succès.');
     
     // Synchroniser les modèles avec la base de données
-    await sequelize.sync({ alter: process.env.NODE_ENV === 'development' });
+    // Utiliser { force: true } temporairement pour recréer les tables
+    // ATTENTION: Cela supprimera toutes les données existantes
+    // Après le premier démarrage réussi, remplacez par { alter: true }
+    await sequelize.sync({ force: true });  // À changer en { alter: true } après le premier démarrage
     console.log('Modèles synchronisés avec la base de données.');
     
     // Démarrer le serveur

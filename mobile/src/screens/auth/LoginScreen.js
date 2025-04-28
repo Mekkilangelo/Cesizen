@@ -116,6 +116,7 @@ const LoginScreen = ({ navigation }) => {
               outlineColor={theme.colors.primary}
               activeOutlineColor={theme.colors.primary}
               error={!!emailError}
+              testID="login-email"
             />
             {emailError ? (
               <HelperText type="error" visible={!!emailError}>
@@ -144,6 +145,7 @@ const LoginScreen = ({ navigation }) => {
               outlineColor={theme.colors.primary}
               activeOutlineColor={theme.colors.primary}
               error={!!passwordError}
+              testID="login-password"
             />
             {passwordError ? (
               <HelperText type="error" visible={!!passwordError}>
@@ -160,6 +162,7 @@ const LoginScreen = ({ navigation }) => {
             style={styles.loginButton}
             labelStyle={styles.buttonLabel}
             buttonColor={theme.colors.primary}
+            testID="login-button"
           >
             Se connecter
           </Button>

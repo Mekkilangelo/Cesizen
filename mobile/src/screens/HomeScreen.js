@@ -271,7 +271,7 @@ const HomeScreen = () => {
   );
 
   const renderPublicContentSection = () => (
-    <View style={styles.sectionContainer}>
+    <View style={styles.sectionContainer} testID="user-content-list">
       <Text style={styles.sectionTitle}>Articles publics</Text>
       
       <Searchbar
@@ -294,6 +294,7 @@ const HomeScreen = () => {
               content={item} 
               onPress={() => handleContentPress(item)}
               showDeleteButton={user && (user.role === 'admin' || user.id === item.authorId || user.id === item.userId || user.id === item.author?.id)}
+              testID="content-card"
             />
           )}
           contentContainerStyle={styles.content}
@@ -320,9 +321,10 @@ const HomeScreen = () => {
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
+      testID="home-screen-container"
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Bienvenue, {user?.username || 'utilisateur'}</Text>
+        <Text style={styles.title} testID="username-display">Bienvenue, {user?.username || 'utilisateur'}</Text>
         <Text style={styles.description}>
           Explorez les derniers articles, gérez vos favoris et vos publications.
         </Text>

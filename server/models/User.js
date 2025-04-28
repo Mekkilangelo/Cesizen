@@ -44,6 +44,7 @@ const User = sequelize.define('User', {
     type: DataTypes.DATE
   }
 }, {
+  tableName: 'Users', // Définir explicitement le nom de la table
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {

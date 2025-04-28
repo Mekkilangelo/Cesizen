@@ -123,6 +123,7 @@ const GuestHomeScreen = () => {
             mode="contained" 
             style={{ marginHorizontal: 5 }}
             onPress={() => navigation.navigate('Auth', { screen: 'Login' })}
+            testID="guest-login-button"
           >
             Se connecter
           </Button>
@@ -130,6 +131,7 @@ const GuestHomeScreen = () => {
             mode="outlined" 
             style={{ marginHorizontal: 5 }}
             onPress={() => navigation.navigate('Auth', { screen: 'Register' })}
+            testID="guest-register-button"
           >
             S'inscrire
           </Button>
@@ -180,6 +182,7 @@ const GuestHomeScreen = () => {
               mode="contained" 
               style={styles.button}
               onPress={navigateToDiagnostic}
+              testID="guest-diagnostic-button"
             >
               Faire le test
             </Button>

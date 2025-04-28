@@ -159,6 +159,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               autoCapitalize="none"
               disabled={isLoading}
+              testID="register-username"
             />
             
             <TextInput
@@ -171,6 +172,7 @@ const RegisterScreen = ({ navigation }) => {
               autoCapitalize="none"
               autoCorrect={false}
               disabled={isLoading}
+              testID="register-email"
             />
             
             <TextInput
@@ -187,6 +189,7 @@ const RegisterScreen = ({ navigation }) => {
                 />
               }
               disabled={isLoading}
+              testID="register-password"
             />
             
             <TextInput
@@ -197,6 +200,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.input}
               secureTextEntry={secureTextEntry}
               disabled={isLoading}
+              testID="register-confirm-password"
             />
             
             <Button
@@ -205,6 +209,7 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.button}
               loading={isLoading}
               disabled={isLoading}
+              testID="register-button"
             >
               <Text style={{color: 'white'}}>S'inscrire</Text>
             </Button>

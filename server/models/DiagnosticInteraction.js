@@ -32,6 +32,7 @@ const DiagnosticInteraction = sequelize.define('DiagnosticInteraction', {
     defaultValue: DataTypes.NOW
   }
 }, {
+  tableName: 'DiagnosticInteractions', // Définir explicitement le nom de la table
   indexes: [
     {
       unique: true,

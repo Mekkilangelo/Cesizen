@@ -43,10 +43,27 @@ Comment.hasMany(CommentInteraction, { foreignKey: 'commentId', as: 'interactions
 CommentInteraction.belongsTo(Comment, { foreignKey: 'commentId' });
 
 // Associations pour les interactions avec les diagnostics
-User.hasMany(DiagnosticInteraction, { foreignKey: 'userId' });
-DiagnosticInteraction.belongsTo(User, { foreignKey: 'userId' });
-Diagnostic.hasMany(DiagnosticInteraction, { foreignKey: 'diagnosticId', as: 'interactions', onDelete: 'CASCADE' });
-DiagnosticInteraction.belongsTo(Diagnostic, { foreignKey: 'diagnosticId' });
+User.hasMany(DiagnosticInteraction, { 
+  foreignKey: 'userId', 
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE' 
+});
+DiagnosticInteraction.belongsTo(User, { 
+  foreignKey: 'userId',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE'
+});
+Diagnostic.hasMany(DiagnosticInteraction, { 
+  foreignKey: 'diagnosticId', 
+  as: 'interactions', 
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE'
+});
+DiagnosticInteraction.belongsTo(Diagnostic, { 
+  foreignKey: 'diagnosticId',
+  onDelete: 'CASCADE',
+  onUpdate: 'CASCADE'
+});
 
 module.exports = {
   User,

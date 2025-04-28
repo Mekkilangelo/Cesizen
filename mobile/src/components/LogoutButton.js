@@ -20,6 +20,7 @@ export const LogoutButton = ({ mode = 'text', compact = false, icon = true }) =>
         color={theme.colors.error}
         size={24}
         onPress={handleLogout}
+        testID="logout-button"
       />
     );
   }
@@ -33,6 +34,7 @@ export const LogoutButton = ({ mode = 'text', compact = false, icon = true }) =>
       color={mode === 'contained' ? 'white' : theme.colors.error}
       labelStyle={mode === 'contained' ? styles.buttonTextContained : styles.buttonText}
       contentStyle={styles.buttonContent}
+      testID="logout-button"
     >
       Se déconnecter
     </Button>

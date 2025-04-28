@@ -160,13 +160,13 @@ const DiagnosticCard = ({ diagnostic }) => {
   }
 
   return (
-    <Card style={styles.card} onPress={handlePress}>
+    <Card style={styles.card} onPress={handlePress} testID="diagnostic-card">
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={1}>
             {diagnostic.title}
           </Text>
-          <View style={styles.score}>
+          <View style={styles.score} testID="diagnostic-score">
             <Text style={styles.scoreText}>{diagnostic.score}</Text>
           </View>
         </View>
@@ -175,7 +175,7 @@ const DiagnosticCard = ({ diagnostic }) => {
           {formatDate(diagnostic.completedAt)}
         </Text>
         
-        <Text style={styles.stressLevel}>
+        <Text style={styles.stressLevel} testID="diagnostic-stress-level">
           {getStressLevel(diagnostic.score)}
         </Text>
         
@@ -186,6 +186,7 @@ const DiagnosticCard = ({ diagnostic }) => {
               iconColor="#FF5252"
               size={20}
               style={styles.deleteButton}
+              testID="delete-diagnostic-button"
             />
           </TouchableOpacity>
         </View>
