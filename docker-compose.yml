@@ -1,12 +1,12 @@
 # Docker Compose pour l'application Cesizen
 # - Service backend Node.js (server/)
-# - Service base de données MySQL 9.2
+# - Service base de données MySQL 8.4
 
 version: '3.8'
 
 services:
   db:
-    image: mysql:9.2
+    image: mysql:8.4
     restart: always
     environment:
       MYSQL_DATABASE: Cesizen
