@@ -22,13 +22,16 @@ jobs:
         run: |
           docker stop cesizen_local || true
           docker rm cesizen_local || true
-      - name: Run new container on local runner
+      - name: Build and start all containers
         run: |
-          docker run -d --name cesizen_local -p 5001:5001 ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+          docker-compose down --remove-orphans || true
+          docker-compose pull
+          docker-compose up -d --build
+          docker-compose ps
       - name: Wait for app
-        run: sleep 10
+        run: sleep 20
       - name: Check app health
         run: |
-          curl --fail http://localhost:5001 || (docker logs cesizen_local && exit 1)
+          curl --fail http://localhost:5001 || (docker-compose logs app && exit 1)
       - name: Show running containers
         run: docker ps
