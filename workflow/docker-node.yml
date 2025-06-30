@@ -14,12 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mysql:
-        image: mysql:8
+        image: mysql:9.2
         env:
-          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_ROOT_PASSWORD: ""
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
           MYSQL_DATABASE: Cesizen
           MYSQL_USER: root
-          MYSQL_PASSWORD: ''
+          MYSQL_PASSWORD: ""
         ports:
           - 3306:3306
         options: >-
