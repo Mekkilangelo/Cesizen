@@ -1,0 +1,74 @@
+# Workflow: Blue/Green Deploy for Node.js backend
+name: Deploy Blue/Green (Node.js)
+
+on:
+  workflow_run:
+    workflows: ["Docker Build and Push (Node.js)"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean up orphan containers
+        run: docker-compose down --remove-orphans || true
+
+      - name: Start all services
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          docker-compose pull
+          docker-compose up -d
+          sleep 30
+          echo "All services started"
+          docker-compose ps
+
+      - name: Determine target environment
+        id: target
+        run: |
+          if grep -q "webapp-blue:80" nginx.conf; then
+            echo "target=green" >> $GITHUB_OUTPUT
+            echo "current=blue" >> $GITHUB_OUTPUT
+            echo "Current: Blue, Deploying to: Green"
+          else
+            echo "target=blue" >> $GITHUB_OUTPUT
+            echo "current=green" >> $GITHUB_OUTPUT
+            echo "Current: Green, Deploying to: Blue"
+          fi
+
+      - name: Deploy to inactive environment
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        run: |
+          echo "Updating ${{ steps.target.outputs.target }} environment..."
+          docker-compose pull webapp-${{ steps.target.outputs.target }}
+          docker-compose up -d webapp-${{ steps.target.outputs.target }}
+          sleep 15
+          echo "${{ steps.target.outputs.target }} environment updated"
+
+      - name: Switch traffic
+        run: |
+          echo "Switching to ${{ steps.target.outputs.target }} environment..."
+          cp nginx-${{ steps.target.outputs.target }}.conf nginx.conf
+          docker-compose restart nginx
+          echo "Traffic switched to ${{ steps.target.outputs.target }}!"
+          echo "Checking nginx status..."
+          docker-compose ps nginx
+          docker-compose logs nginx --tail=10
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          echo "Checking all services status:"
+          docker-compose ps
+          echo "Testing connection..."
+          curl -f http://localhost:3000 || exit 1
+          echo "Deployment successful!"
+          echo "Active environment: ${{ steps.target.outputs.target }}"
+          echo "Standby environment: ${{ steps.target.outputs.current }}"
