@@ -22,7 +22,7 @@ Tests qui vérifient le bon fonctionnement des fonctionnalités complètes du sy
 
 ### Tests de non-régression
 Tests qui s'assurent que les modifications apportées au code n'affectent pas négativement les fonctionnalités existantes.
-
+modifÒ
 ## Tests Backend
 
 Les tests backend sont organisés dans le dossier `server/tests/` et sont divisés en:
