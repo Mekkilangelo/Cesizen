@@ -152,3 +152,5 @@ Pour chaque type de test, nous avons défini un ensemble de scénarios de test p
 | TE2E-001 | Parcours utilisateur complet | Application démarrée | 1. Inscription<br>2. Connexion<br>3. Création diagnostic<br>4. Création contenu<br>5. Interactions | Toutes les étapes réussissent |
 | TE2E-002 | Consultation des diagnostics | Utilisateur avec diagnostics | 1. Connexion<br>2. Navigation vers diagnostics<br>3. Consultation d'un diagnostic | Diagnostic affiché correctement |
 | TE2E-003 | Interactions avec contenu | Utilisateur authentifié | 1. Connexion<br>2. Navigation vers contenus<br>3. Like d'un contenu | Like enregistré et affiché |
+
+pull request try 2
