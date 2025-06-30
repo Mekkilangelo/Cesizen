@@ -47,6 +47,20 @@ jobs:
             sleep 2
           done
 
+      - name: Debug DB env
+        run: |
+          echo "DB_NAME=$DB_NAME"
+          echo "DB_USER=$DB_USER"
+          echo "DB_PASSWORD=[$DB_PASSWORD]"
+          echo "DB_HOST=$DB_HOST"
+          echo "DB_PORT=$DB_PORT"
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+
       - name: Run tests
         run: |
           DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
