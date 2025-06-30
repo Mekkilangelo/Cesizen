@@ -1,0 +1,34 @@
+name: Deploy (CD)
+
+on:
+  workflow_run:
+    workflows: ["Docker Build & Compose"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Pull latest image
+        run: docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+      - name: Stop and remove old container (if any)
+        run: |
+          docker stop cesizen_local || true
+          docker rm cesizen_local || true
+      - name: Run new container on local runner
+        run: |
+          docker run -d --name cesizen_local -p 5001:5001 ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+      - name: Wait for app
+        run: sleep 10
+      - name: Check app health
+        run: |
+          curl --fail http://localhost:5001 || (docker logs cesizen_local && exit 1)
+      - name: Show running containers
+        run: docker ps
