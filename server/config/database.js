@@ -1,8 +1,9 @@
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
+//verif
 // Toujours utiliser les variables d'environnement si présentes, sinon fallback explicite
-const dbHost = process.env.DB_HOST || '127.0.0.1';
+const dbHost = process.env.DB_HOST || 'localhost';
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 const dbName = process.env.DB_NAME || 'Cesizen';
 const dbUser = process.env.DB_USER || 'root';
