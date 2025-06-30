@@ -1,0 +1,54 @@
+# Workflow: SonarQube Analysis for Node.js/React
+name: SonarQube Analysis (Node.js/React)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarqube:
+    name: SonarQube Analysis (Node.js/React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install SonarQube Scanner
+        run: npm install -g sonarqube-scanner
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Run SonarQube Scanner (server)
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonarqube-scanner \
+            -Dsonar.projectKey=Mekkilangelo_TP2_Node \
+            -Dsonar.sources=server \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+      - name: Run SonarQube Scanner (mobile)
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonarqube-scanner \
+            -Dsonar.projectKey=Mekkilangelo_TP2_Mobile \
+            -Dsonar.sources=mobile \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}
