@@ -5,7 +5,7 @@ WORKDIR /front
 COPY mobile/package*.json ./
 RUN npm ci
 COPY mobile/ .
-RUN npm run build || npm run web
+RUN npm run build
 
 # Étape 2 : Builder le backend Node.js
 FROM node:20-alpine AS backend-build
