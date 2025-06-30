@@ -16,10 +16,10 @@ jobs:
       mysql:
         image: mysql:8
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_ROOT_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.DB_NAME }}
-          MYSQL_USER: ${{ secrets.DB_USER }}
-          MYSQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ''
+          MYSQL_DATABASE: Cesizen
+          MYSQL_USER: root
+          MYSQL_PASSWORD: ''
         ports:
           - 3306:3306
         options: >-
@@ -49,33 +49,30 @@ jobs:
 
       - name: Debug DB env
         run: |
-          echo "DB_NAME=$DB_NAME"
-          echo "DB_USER=$DB_USER"
-          echo "DB_PASSWORD=[$DB_PASSWORD]"
-          echo "DB_HOST=$DB_HOST"
-          echo "DB_PORT=$DB_PORT"
+          echo "DB_NAME=Cesizen"
+          echo "DB_USER=root"
+          echo "DB_PASSWORD=[]"
+          echo "DB_HOST=127.0.0.1"
+          echo "DB_PORT=3306"
         env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PASSWORD: ''
+          DB_USER: root
+          DB_NAME: Cesizen
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
 
       - name: Run tests
         run: |
-          DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
-          DB_ROOT_PASSWORD="${{ secrets.DB_ROOT_PASSWORD }}"
-          [ "$DB_PASSWORD" = "empty" ] && DB_PASSWORD=""
-          [ "$DB_ROOT_PASSWORD" = "empty" ] && DB_ROOT_PASSWORD=""
-          DB_NAME="${{ secrets.DB_NAME }}"
-          DB_USER="${{ secrets.DB_USER }}"
+          DB_PASSWORD=""
+          DB_NAME="Cesizen"
+          DB_USER="root"
           DB_HOST="127.0.0.1"
           DB_PORT=3306
           DB_PASSWORD="$DB_PASSWORD" DB_USER="$DB_USER" DB_NAME="$DB_NAME" DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" npm test
         env:
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PASSWORD: ''
+          DB_USER: root
+          DB_NAME: Cesizen
           DB_HOST: 127.0.0.1
           DB_PORT: 3306
 
