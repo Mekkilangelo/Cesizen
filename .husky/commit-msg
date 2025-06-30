@@ -1,5 +1,2 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
-
-echo "hook commit-msg lancé" >> /tmp/husky-debug.log
-npx --no -- commitlint --edit "$1"
+cat "$1" > /tmp/commitlint-debug.txt
+npx --no -- commitlint --config "$(git rev-parse --show-toplevel)/commitlint.config.js" --edit "$1"
