@@ -1,14 +1,21 @@
 require('dotenv').config();
 const { Sequelize } = require('sequelize');
 
+// Toujours utiliser les variables d'environnement si présentes, sinon fallback explicite
+const dbHost = process.env.DB_HOST || '127.0.0.1';
+const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
+const dbName = process.env.DB_NAME || 'Cesizen';
+const dbUser = process.env.DB_USER || 'root';
+const dbPort = process.env.DB_PORT || 3306;
+
 const sequelize = new Sequelize(
-  process.env.DB_NAME || 'app_database',
-  process.env.DB_USER || 'root',
-  process.env.DB_PASSWORD || '',
+  dbName,
+  dbUser,
+  dbPassword,
   {
-    host: process.env.DB_HOST || 'localhost',
+    host: dbHost,
     dialect: 'mysql',
-    port: process.env.DB_PORT || 3306,
+    port: dbPort,
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
       max: 5,
@@ -18,5 +25,12 @@ const sequelize = new Sequelize(
     }
   }
 );
+
+console.log('Sequelize config utilisée :', sequelize.config);
+console.log('DB_HOST:', dbHost);
+console.log('DB_USER:', dbUser);
+console.log('DB_PASSWORD:', dbPassword);
+console.log('DB_NAME:', dbName);
+console.log('DB_PORT:', dbPort);
 
 module.exports = sequelize;
