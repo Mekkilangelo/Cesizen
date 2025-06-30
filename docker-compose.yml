@@ -1,4 +1,22 @@
 services:
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_DATABASE: Cesizen
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ""
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
@@ -101,6 +119,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  mysql-data:
   sqlserver_data:
   loki-data:
   grafana-data:
