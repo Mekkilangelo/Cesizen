@@ -10,8 +10,6 @@ services:
     restart: always
     environment:
       MYSQL_DATABASE: Cesizen
-      MYSQL_USER: root
-      MYSQL_PASSWORD: example
       MYSQL_ROOT_PASSWORD: example
     ports:
       - "3306:3306"
