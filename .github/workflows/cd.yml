@@ -27,12 +27,15 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/download/v2.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose version
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Build and start all containers
         run: |
           docker-compose down --remove-orphans || true
           docker-compose pull
           docker-compose up -d --build
           docker-compose ps
+        working-directory: ${{ github.workspace }}
       - name: Wait for app
         run: sleep 20
       - name: Check app health
