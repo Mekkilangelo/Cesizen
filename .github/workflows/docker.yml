@@ -26,7 +26,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cesizen:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
 
   compose:
     name: Docker Compose Up (Smoke Test)
