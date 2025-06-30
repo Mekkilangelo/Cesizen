@@ -2,7 +2,6 @@ const sequelize = require('../config/database');
 
 // Configuration pour une base de données de test
 process.env.NODE_ENV = 'test';
-process.env.DB_NAME = 'cesizen_test';
 
 // Augmenter le timeout pour les opérations de base de données
 jest.setTimeout(10000);
