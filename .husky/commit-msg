@@ -1,3 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
 echo "hook commit-msg lancé" >> /tmp/husky-debug.log
-cat "$1"
 npx --no -- commitlint --edit "$1"
