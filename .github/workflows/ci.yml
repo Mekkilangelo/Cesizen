@@ -1,0 +1,87 @@
+name: Backend & Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  install-and-test:
+    name: Install, Lint, Test (Backend & Frontend)
+    runs-on: self-hosted
+    services:
+      mysql:
+        image: mysql:9.2
+        env:
+          MYSQL_DATABASE: Cesizen
+          MYSQL_USER: root
+          MYSQL_PASSWORD: example
+          MYSQL_ROOT_PASSWORD: example
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=5
+    env:
+      DB_HOST: 127.0.0.1
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: Cesizen
+      DB_PORT: 3306
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Install root dependencies
+        run: npm ci
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: server
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: mobile
+      - name: Lint backend
+        run: npm run lint || true
+        working-directory: server
+      - name: Lint frontend
+        run: npm run lint || true
+        working-directory: mobile
+      - name: Run backend tests
+        run: npm test
+        working-directory: server
+      - name: Run frontend tests
+        run: npm test
+        working-directory: mobile
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            server/coverage
+            mobile/coverage
+
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: self-hosted
+    needs: install-and-test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Install SonarCloud scanner
+        run: npm install -g sonarqube-scanner
+      - name: Run SonarCloud Scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          npx sonarqube-scanner \
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }} \
+            -Dsonar.organization=${{ secrets.SONAR_ORG }} \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }}

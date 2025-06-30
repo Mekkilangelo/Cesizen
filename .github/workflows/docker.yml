@@ -1,0 +1,60 @@
+name: Docker Build & Compose
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  docker:
+    name: Build & Push Docker Image
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cesizen:latest
+
+  compose:
+    name: Docker Compose Up (Smoke Test)
+    runs-on: self-hosted
+    needs: docker
+    services:
+      db:
+        image: mysql:9.2
+        env:
+          MYSQL_DATABASE: Cesizen
+          MYSQL_USER: root
+          MYSQL_PASSWORD: example
+          MYSQL_ROOT_PASSWORD: example
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent" --health-interval=10s --health-timeout=5s --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Compose
+        run: sudo apt-get update && sudo apt-get install -y docker-compose
+      - name: Docker Compose Up
+        run: docker-compose up -d --build
+      - name: Wait for app
+        run: sleep 30
+      - name: Check app health
+        run: |
+          curl --fail http://localhost:5001 || (docker-compose logs && exit 1)
+      - name: Docker Compose Down
+        if: always()
+        run: docker-compose down
