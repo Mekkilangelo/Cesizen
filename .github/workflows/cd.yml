@@ -2,20 +2,54 @@ name: Deploy Web & Mobile (CD)
 
 on:
   workflow_run:
-    workflows: ["Docker Build & Compose"]
+    workflows: ["Docker Build & Compose", "Backend & Frontend CI"]
     types:
       - completed
 
 jobs:
   # ==========================================
+  # Verify Prerequisites Job
+  # ==========================================
+  verify-prerequisites:
+    runs-on: ubuntu-latest
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+    steps:
+      - name: Check workflow prerequisites
+        id: check
+        run: |
+          echo "Checking workflow: ${{ github.event.workflow_run.name }}"
+          echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
+          
+          # Only deploy if this is the Docker workflow completing successfully
+          # and we need to verify CI also passed
+          if [ "${{ github.event.workflow_run.name }}" == "Docker Build & Compose" ] && [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "✅ Docker workflow succeeded, will proceed with deployment"
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "❌ Prerequisites not met for deployment"
+          fi
+
+  # ==========================================
   # Job pour déployer la version WEB
   # ==========================================
   deploy-web:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: verify-prerequisites
+    if: ${{ needs.verify-prerequisites.outputs.should-deploy == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        
+      - name: Verify Docker workflow success
+        run: |
+          echo "Previous workflow conclusion: ${{ github.event.workflow_run.conclusion }}"
+          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "❌ Docker workflow failed, aborting deployment"
+            exit 1
+          fi
+          echo "✅ Docker workflow succeeded, proceeding with deployment"
         
       - name: Set up Docker Compose
         run: |
@@ -57,7 +91,8 @@ jobs:
   # ==========================================
   deploy-mobile:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    needs: verify-prerequisites
+    if: ${{ needs.verify-prerequisites.outputs.should-deploy == 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

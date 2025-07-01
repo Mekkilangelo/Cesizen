@@ -13,7 +13,7 @@
     "test:coverage": "jest --coverage",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
-    "build": "npx expo export:web"
+    "build": "npx expo export --platform web --output-dir web-build"
   },
   "dependencies": {
     "@expo/config": "^10.0.11",

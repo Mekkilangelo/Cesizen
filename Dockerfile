@@ -5,6 +5,7 @@
 # ==========================================
 FROM node:20-alpine AS frontend-base
 WORKDIR /frontend
+RUN npm install -g @expo/cli eas-cli
 COPY mobile/package*.json ./
 RUN npm ci
 COPY mobile/ .
@@ -13,7 +14,7 @@ COPY mobile/ .
 # Étape 2 : Build frontend WEB
 # ==========================================
 FROM frontend-base AS frontend-web-build
-RUN npm run build
+RUN npx expo export --platform web --output-dir web-build
 RUN echo "Web build completed" && ls -la web-build/
 
 # ==========================================
