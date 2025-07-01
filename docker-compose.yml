@@ -1,5 +1,6 @@
 # Docker Compose pour l'application Cesizen
-# - Service backend Node.js (server/)
+# - Service backend + frontend WEB 
+# - Service backend + frontend MOBILE
 # - Service base de données MySQL 8.4
 
 version: '3.8'
@@ -21,10 +22,13 @@ services:
       timeout: 5s
       retries: 5
 
-  app:
+  # ==========================================
+  # Service WEB (Backend + Frontend Web)
+  # ==========================================
+  app-web:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.web
     depends_on:
       db:
         condition: service_healthy
@@ -35,11 +39,46 @@ services:
       DB_NAME: Cesizen
       DB_PORT: 3306
       NODE_ENV: production
+      SERVICE_TYPE: web
     ports:
       - "5001:5001"
     restart: always
     volumes:
       - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Service MOBILE (Backend + Assets Mobile)
+  # ==========================================
+  app-mobile:
+    build:
+      context: .
+      dockerfile: Dockerfile.mobile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: Cesizen
+      DB_PORT: 3306
+      NODE_ENV: production
+      SERVICE_TYPE: mobile
+    ports:
+      - "5002:5002"
+    restart: always
+    volumes:
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   db_data:

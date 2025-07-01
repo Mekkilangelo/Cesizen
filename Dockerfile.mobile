@@ -1,0 +1,103 @@
+# Dockerfile spécifique pour la version MOBILE  
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+
+# Installer les dépendances globales nécessaires
+RUN npm install -g @expo/cli eas-cli
+
+# Copier et installer les dépendances
+COPY mobile/package*.json ./
+RUN npm ci
+
+# Copier le code source
+COPY mobile/ .
+
+# Créer un build optimisé pour mobile/web hybrid
+# Pour un conteneur, on va exporter en mode web mais optimisé pour mobile
+RUN npx expo export --platform web --output-dir mobile-dist
+RUN echo "Mobile build completed" && ls -la mobile-dist/
+
+FROM node:20-alpine AS backend
+WORKDIR /app
+
+# Installer les dépendances backend
+COPY server/package*.json ./
+RUN npm ci --only=production
+
+# Copier le code backend
+COPY server/ .
+
+# Copier le build mobile
+COPY --from=frontend-build /frontend/mobile-dist ./public
+
+# Créer un serveur Express adapté pour mobile
+RUN echo "const express = require('express');" > mobile-server.js && \
+    echo "const path = require('path');" >> mobile-server.js && \
+    echo "const cors = require('cors');" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "const app = express();" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Middleware" >> mobile-server.js && \
+    echo "app.use(cors({" >> mobile-server.js && \
+    echo "    origin: true," >> mobile-server.js && \
+    echo "    credentials: true" >> mobile-server.js && \
+    echo "}));" >> mobile-server.js && \
+    echo "app.use(express.json());" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Servir les assets mobiles statiques" >> mobile-server.js && \
+    echo "app.use(express.static(path.join(__dirname, 'public')));" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Routes API (si disponibles)" >> mobile-server.js && \
+    echo "try {" >> mobile-server.js && \
+    echo "  const authRoutes = require('./routes/authRoutes');" >> mobile-server.js && \
+    echo "  const contentRoutes = require('./routes/contentRoutes');" >> mobile-server.js && \
+    echo "  const diagnosticRoutes = require('./routes/diagnosticRoutes');" >> mobile-server.js && \
+    echo "  const interactionRoutes = require('./routes/interactionRoutes');" >> mobile-server.js && \
+    echo "  app.use('/api', authRoutes);" >> mobile-server.js && \
+    echo "  app.use('/api', contentRoutes);" >> mobile-server.js && \
+    echo "  app.use('/api', diagnosticRoutes);" >> mobile-server.js && \
+    echo "  app.use('/api', interactionRoutes);" >> mobile-server.js && \
+    echo "} catch (e) {" >> mobile-server.js && \
+    echo "  console.log('API routes not available:', e.message);" >> mobile-server.js && \
+    echo "}" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Endpoint de santé" >> mobile-server.js && \
+    echo "app.get('/health', (req, res) => {" >> mobile-server.js && \
+    echo "    res.json({" >> mobile-server.js && \
+    echo "        service: 'Mobile API Server'," >> mobile-server.js && \
+    echo "        status: 'healthy'," >> mobile-server.js && \
+    echo "        timestamp: new Date().toISOString()," >> mobile-server.js && \
+    echo "        assets: '/public'" >> mobile-server.js && \
+    echo "    });" >> mobile-server.js && \
+    echo "});" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Route racine" >> mobile-server.js && \
+    echo "app.get('/', (req, res) => {" >> mobile-server.js && \
+    echo "    res.json({" >> mobile-server.js && \
+    echo "        message: 'CesiZen Mobile API Server'," >> mobile-server.js && \
+    echo "        version: '1.0.0'," >> mobile-server.js && \
+    echo "        endpoints: {" >> mobile-server.js && \
+    echo "            api: '/api'," >> mobile-server.js && \
+    echo "            health: '/health'" >> mobile-server.js && \
+    echo "        }" >> mobile-server.js && \
+    echo "    });" >> mobile-server.js && \
+    echo "});" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "// Catch-all pour SPA mobile" >> mobile-server.js && \
+    echo "app.get('*', (req, res) => {" >> mobile-server.js && \
+    echo "    res.sendFile(path.join(__dirname, 'public', 'index.html'));" >> mobile-server.js && \
+    echo "});" >> mobile-server.js && \
+    echo "" >> mobile-server.js && \
+    echo "const PORT = process.env.PORT || 5002;" >> mobile-server.js && \
+    echo "app.listen(PORT, '0.0.0.0', () => {" >> mobile-server.js && \
+    echo "    console.log('🚀 Mobile API Server running on port ' + PORT);" >> mobile-server.js && \
+    echo "    console.log('📱 Mobile assets served from /public');" >> mobile-server.js && \
+    echo "    console.log('🔗 API endpoints available at /api');" >> mobile-server.js && \
+    echo "});" >> mobile-server.js
+
+RUN echo "=== MOBILE VERSION BUILD COMPLETED ===" && \
+    echo "Mobile assets:" && ls -la ./public/ && \
+    echo "Backend files:" && ls -la ./
+
+EXPOSE 5002
+CMD ["node", "mobile-server.js"]

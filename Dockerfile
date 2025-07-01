@@ -1,27 +1,54 @@
-# Dockerfile pour backend Node.js (server/)
-# Étape 1 : Builder le front web
-FROM node:20-alpine AS frontend-build
-WORKDIR /front
+# Multi-stage Dockerfile pour backend + frontend web et mobile
+
+# ==========================================
+# Étape 1 : Base pour les builds frontend
+# ==========================================
+FROM node:20-alpine AS frontend-base
+WORKDIR /frontend
 COPY mobile/package*.json ./
 RUN npm ci
 COPY mobile/ .
-RUN npm run build
 
-# Étape 2 : Builder le backend Node.js
-FROM node:20-alpine AS backend-build
+# ==========================================
+# Étape 2 : Build frontend WEB
+# ==========================================
+FROM frontend-base AS frontend-web-build
+RUN npm run build
+RUN echo "Web build completed" && ls -la web-build/
+
+# ==========================================
+# Étape 3 : Build frontend MOBILE (Expo)
+# ==========================================
+FROM frontend-base AS frontend-mobile-build
+RUN npx expo export --platform ios --platform android --output-dir mobile-build
+RUN echo "Mobile build completed" && ls -la mobile-build/
+
+# ==========================================
+# Étape 4 : Base backend Node.js
+# ==========================================
+FROM node:20-alpine AS backend-base
 WORKDIR /app
 COPY server/package*.json ./
 RUN npm ci --only=production
 COPY server/ .
 
-# Copier le build du front dans le backend (public/)
-COPY --from=frontend-build /front/web-build ./public
-
-# Vérifier que les fichiers du front sont bien copiés
-RUN ls -la ./public/
-
-# Exposer le port utilisé par l'app Node.js
+# ==========================================
+# Étape 5 : Backend + Frontend WEB
+# ==========================================
+FROM backend-base AS backend-web
+# Copier le build web dans le dossier public du backend
+COPY --from=frontend-web-build /frontend/web-build ./public
+RUN echo "Web files copied to backend:" && ls -la ./public/
 EXPOSE 5001
+CMD ["node", "server.js"]
 
-# Commande de démarrage
+# ==========================================
+# Étape 6 : Backend + Frontend MOBILE
+# ==========================================
+FROM backend-base AS backend-mobile
+# Copier le build mobile dans un dossier séparé
+COPY --from=frontend-mobile-build /frontend/mobile-build ./mobile-dist
+RUN echo "Mobile files copied to backend:" && ls -la ./mobile-dist/
+EXPOSE 5002
+# Utiliser un script de démarrage spécifique pour mobile
 CMD ["node", "server.js"]

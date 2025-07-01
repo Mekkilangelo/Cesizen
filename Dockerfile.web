@@ -1,0 +1,23 @@
+# Dockerfile spécifique pour la version WEB
+FROM node:20-alpine AS frontend-build
+WORKDIR /frontend
+COPY mobile/package*.json ./
+RUN npm ci
+COPY mobile/ .
+RUN npm run build
+
+FROM node:20-alpine AS backend
+WORKDIR /app
+COPY server/package*.json ./
+RUN npm ci --only=production
+COPY server/ .
+
+# Copier le build web dans le dossier public
+COPY --from=frontend-build /frontend/web-build ./public
+
+RUN echo "=== WEB VERSION BUILD COMPLETED ===" && \
+    echo "Frontend files:" && ls -la ./public/ && \
+    echo "Backend files:" && ls -la ./
+
+EXPOSE 5001
+CMD ["node", "server.js"]
