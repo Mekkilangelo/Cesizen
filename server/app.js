@@ -45,6 +45,9 @@ app.use((req, res, next) => {
 // Middleware pour servir les fichiers statiques
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Servir les fichiers statiques du front-end (React/Expo web build)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Routes API
 app.use('/api/auth', authRoutes);
 app.use('/api/diagnostics', diagnosticRoutes);
@@ -52,9 +55,15 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/contents', contentRoutes);
 app.use('/api/interactions', interactionRoutes);
 
-// Route de test pour vérifier que le serveur fonctionne
-app.get('/', (req, res) => {
+// Route de test pour vérifier que le serveur fonctionne (API only)
+app.get('/api', (req, res) => {
   res.json({ message: 'Bienvenue sur l\'API de l\'application' });
+});
+
+// Route catch-all pour servir l'application front-end (SPA)
+// Doit être après toutes les routes API
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Middleware de gestion des erreurs

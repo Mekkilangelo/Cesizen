@@ -17,6 +17,9 @@ COPY server/ .
 # Copier le build du front dans le backend (public/)
 COPY --from=frontend-build /front/web-build ./public
 
+# Vérifier que les fichiers du front sont bien copiés
+RUN ls -la ./public/
+
 # Exposer le port utilisé par l'app Node.js
 EXPOSE 5001
 

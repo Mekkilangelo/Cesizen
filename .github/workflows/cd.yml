@@ -40,6 +40,10 @@ jobs:
         run: sleep 20
       - name: Check app health
         run: |
-          curl --fail http://localhost:5001 || (docker-compose logs app && exit 1)
+          echo "Vérification de l'API..."
+          curl --fail http://localhost:5001/api || (docker-compose logs app && exit 1)
+          echo "Vérification du front-end..."
+          curl --fail -L http://localhost:5001 | grep -q "<!DOCTYPE html" || (echo "Front-end non accessible" && docker-compose logs app && exit 1)
+          echo "Application déployée avec succès - API et front-end accessibles"
       - name: Show running containers
         run: docker ps
