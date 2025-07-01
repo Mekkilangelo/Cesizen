@@ -2,7 +2,7 @@ name: Deploy Web & Mobile (CD)
 
 on:
   workflow_run:
-    workflows: ["Docker Build & Validate", "Backend & Frontend CI"]
+    workflows: ["Complete CI/CD Pipeline"]
     types:
       - completed
 
@@ -21,9 +21,8 @@ jobs:
           echo "Checking workflow: ${{ github.event.workflow_run.name }}"
           echo "Conclusion: ${{ github.event.workflow_run.conclusion }}"
           
-          # Only deploy if this is the Docker workflow completing successfully
-          # and we need to verify CI also passed
-          if [ "${{ github.event.workflow_run.name }}" == "Docker Build & Validate" ] && [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
+          # Only deploy if this is the CI/CD pipeline completing successfully
+          if [ "${{ github.event.workflow_run.name }}" == "Complete CI/CD Pipeline" ] && [ "${{ github.event.workflow_run.conclusion }}" == "success" ]; then
             echo "should-deploy=true" >> $GITHUB_OUTPUT
             echo "✅ Docker workflow succeeded, will proceed with deployment"
           else
