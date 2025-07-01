@@ -154,6 +154,14 @@ const HomeScreen = () => {
       alignSelf: 'flex-end',
       marginRight: theme.spacing.md,
       marginBottom: theme.spacing.md,
+    },
+    supportButton: {
+      marginTop: theme.spacing.md,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.borderRadius.medium,
+    },
+    supportButtonContent: {
+      flexDirection: 'row-reverse',
     }
   });
 
@@ -328,6 +336,16 @@ const HomeScreen = () => {
         <Text style={styles.description}>
           Explorez les derniers articles, gérez vos favoris et vos publications.
         </Text>
+        
+        <Button 
+          mode="outlined" 
+          icon="help-circle-outline" 
+          onPress={() => navigation.navigate('TicketScreen')}
+          style={styles.supportButton}
+          contentStyle={styles.supportButtonContent}
+        >
+          Besoin d'aide ?
+        </Button>
       </View>
 
       {renderUserContentSection()}

@@ -18,6 +18,7 @@ import ContentDetailScreen from '../screens/ContentDetailScreen';
 import GuestContentScreen from '../screens/GuestContentScreen';
 import GuestHomeScreen from '../screens/GuestHomeScreen';
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import TicketScreen from '../screens/TicketScreen';
 import LoginRegisterButton from '../components/LoginRegisterButton';
 
 // Navigation Stack
@@ -148,6 +149,14 @@ const HomeNavigator = () => (
         title: route.params?.title || 'Détail du contenu',
         headerShown: true
       })}
+    />
+    <Stack.Screen 
+      name="TicketScreen" 
+      component={TicketScreen}
+      options={{ 
+        title: 'Support',
+        headerShown: true
+      }}
     />
   </Stack.Navigator>
 );
