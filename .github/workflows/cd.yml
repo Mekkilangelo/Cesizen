@@ -8,7 +8,7 @@ on:
 
 jobs:
   # ==========================================
-  # Verify Prerequisites Job
+  # Verify Prerequisites Job abracadabra
   # ==========================================
   verify-prerequisites:
     runs-on: ubuntu-latest
