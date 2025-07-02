@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
 import { Text, Searchbar, useTheme, Button, Chip, Divider } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,7 +23,7 @@ const HomeScreen = () => {
 
   useEffect(() => {
     loadContent();
-  }, []);
+  }, [dispatch]); // ✅ Ajouter dispatch dans les dépendances
 
   useEffect(() => {
     if (latestContent && latestContent.length > 0) {
@@ -47,16 +47,21 @@ const HomeScreen = () => {
     }
   }, [latestContent, selectedFilter, searchQuery]);
 
-  const loadContent = async () => {
+  const loadContent = useCallback(async () => {
     setRefreshing(true);
-    // Charger tous les contenus requis en parallèle
-    await Promise.all([
-      dispatch(fetchLatestContent()),
-      dispatch(fetchUserContents()),
-      dispatch(fetchFavoriteContents())
-    ]);
-    setRefreshing(false);
-  };
+    try {
+      // Charger tous les contenus requis en parallèle
+      await Promise.all([
+        dispatch(fetchLatestContent()),
+        dispatch(fetchUserContents()),
+        dispatch(fetchFavoriteContents())
+      ]);
+    } catch (error) {
+      console.error('Erreur lors du chargement des contenus:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch]);
 
   const handleRefresh = () => {
     loadContent();
