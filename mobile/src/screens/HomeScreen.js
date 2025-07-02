@@ -208,7 +208,7 @@ const HomeScreen = () => {
 
   const renderUserContentSection = () => (
     <View style={styles.sectionContainer}>
-      <Text style={styles.sectionTitle}>Mes articles</Text>
+      <Text style={styles.sectionTitle}>Mes articles avec un s</Text>
       {isLoading && !refreshing ? (
         <ActivityIndicator size="large" color={theme.colors.primary} />
       ) : userContents && userContents.length > 0 ? (
