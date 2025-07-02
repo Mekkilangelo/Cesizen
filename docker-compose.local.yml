@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: Cesizen
+      MYSQL_ROOT_PASSWORD: example
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data_local:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app-web:
+    image: cesizen:web-local
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: Cesizen
+      DB_PORT: 3306
+      NODE_ENV: production
+      SERVICE_TYPE: web
+    ports:
+      - "5001:5001"
+    restart: always
+    volumes:
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  db_data_local:
