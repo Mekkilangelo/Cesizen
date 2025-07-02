@@ -22,10 +22,10 @@ services:
       retries: 5
 
   # ==========================================
-  # Service WEB - Utilise l'image CI
+  # Service WEB - Utilise l'image CI WEB
   # ==========================================
   app-web:
-    image: ${DOCKER_USERNAME}/cesizen:latest
+    image: ${DOCKER_USERNAME}/cesizen:web-latest
     pull_policy: always  # Force la récupération de la dernière image
     depends_on:
       db:
@@ -50,10 +50,10 @@ services:
       retries: 3
 
   # ==========================================
-  # Service MOBILE - Utilise l'image CI
+  # Service MOBILE - Utilise l'image CI MOBILE
   # ==========================================
   app-mobile:
-    image: ${DOCKER_USERNAME}/cesizen:latest
+    image: ${DOCKER_USERNAME}/cesizen:mobile-latest
     pull_policy: always  # Force la récupération de la dernière image
     depends_on:
       db:

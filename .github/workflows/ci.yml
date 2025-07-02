@@ -109,19 +109,33 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           
-      - name: Build and push Docker image
-        id: build
+      - name: Build and push WEB Docker image
+        id: build-web
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
+          target: backend-web
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest
           
-      - name: Validate Docker Image
+      - name: Build and push MOBILE Docker image
+        id: build-mobile
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          target: backend-mobile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest
+          
+      - name: Validate Docker Images
         run: |
-          # Pull the image that was just built
-          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
-          # Quick validation that the image exists and can be inspected
-          docker inspect ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
-          echo "✅ Docker image validated successfully"
+          # Pull both images that were just built
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest
+          
+          # Quick validation that both images exist and can be inspected
+          docker inspect ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest
+          docker inspect ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest
+          echo "✅ Both Docker images validated successfully"

@@ -69,9 +69,9 @@ jobs:
           echo "=== DEPLOYING WEB VERSION ==="
           # Arrêter et supprimer les conteneurs existants
           docker-compose -f docker-compose.prod.yml down app-web || true
-          # Forcer la récupération de la dernière image
-          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
-          # Démarrer avec la nouvelle image
+          # Forcer la récupération de la dernière image WEB
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest
+          # Démarrer avec la nouvelle image WEB
           docker-compose -f docker-compose.prod.yml up -d db app-web
           echo "Waiting for web service to start..."
           sleep 25
@@ -87,8 +87,8 @@ jobs:
 
       - name: Tag and push WEB image
         run: |
-          # L'image est déjà poussée par le CI, pas besoin de re-tag
-          echo "✅ Using image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest"
+          # L'image WEB est déjà poussée par le CI avec le bon target
+          echo "✅ Using WEB image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest"
 
   # ==========================================
   # Job pour déployer la version MOBILE  
@@ -120,9 +120,9 @@ jobs:
           echo "=== DEPLOYING MOBILE VERSION ==="
           # Arrêter et supprimer les conteneurs existants
           docker-compose -f docker-compose.prod.yml down app-mobile || true
-          # Forcer la récupération de la dernière image
-          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
-          # Démarrer avec la nouvelle image
+          # Forcer la récupération de la dernière image MOBILE
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest
+          # Démarrer avec la nouvelle image MOBILE
           docker-compose -f docker-compose.prod.yml up -d db app-mobile
           echo "Waiting for mobile service to start..."
           sleep 25
@@ -138,8 +138,8 @@ jobs:
 
       - name: Tag and push MOBILE image
         run: |
-          # L'image est déjà poussée par le CI, pas besoin de re-tag
-          echo "✅ Using image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest"
+          # L'image MOBILE est déjà poussée par le CI avec le bon target
+          echo "✅ Using MOBILE image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest"
 
   # ==========================================
   # Job de synthèse (optionnel)
