@@ -2,9 +2,9 @@ name: Complete CI/CD Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 jobs:
   install-and-test:
@@ -117,6 +117,7 @@ jobs:
           file: ./Dockerfile
           target: backend-web
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:web-latest
           
       - name: Build and push MOBILE Docker image
@@ -127,6 +128,7 @@ jobs:
           file: ./Dockerfile
           target: backend-mobile
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ secrets.DOCKER_USERNAME }}/cesizen:mobile-latest
           
       - name: Validate Docker Images
