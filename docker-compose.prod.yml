@@ -1,0 +1,81 @@
+# Docker Compose PRODUCTION - Utilise les images pré-construites
+# - Utilise l'image construite par CI/CD au lieu de rebuild local
+# - Synchronisé avec la pipeline GitHub Actions
+
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.4
+    restart: always
+    environment:
+      MYSQL_DATABASE: Cesizen
+      MYSQL_ROOT_PASSWORD: example
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # Service WEB - Utilise l'image CI
+  # ==========================================
+  app-web:
+    image: ${DOCKER_USERNAME}/cesizen:latest
+    pull_policy: always  # Force la récupération de la dernière image
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: Cesizen
+      DB_PORT: 3306
+      NODE_ENV: production
+      SERVICE_TYPE: web
+    ports:
+      - "5001:5001"
+    restart: always
+    volumes:
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5001/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # Service MOBILE - Utilise l'image CI
+  # ==========================================
+  app-mobile:
+    image: ${DOCKER_USERNAME}/cesizen:latest
+    pull_policy: always  # Force la récupération de la dernière image
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: Cesizen
+      DB_PORT: 3306
+      NODE_ENV: production
+      SERVICE_TYPE: mobile
+    ports:
+      - "5002:5002"
+    restart: always
+    volumes:
+      - ./server/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5002/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  db_data:

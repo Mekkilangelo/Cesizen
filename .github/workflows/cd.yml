@@ -63,11 +63,16 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and deploy WEB version
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           echo "=== DEPLOYING WEB VERSION ==="
-          docker-compose down app-web || true
-          docker-compose build app-web
-          docker-compose up -d db app-web
+          # Arrêter et supprimer les conteneurs existants
+          docker-compose -f docker-compose.prod.yml down app-web || true
+          # Forcer la récupération de la dernière image
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+          # Démarrer avec la nouvelle image
+          docker-compose -f docker-compose.prod.yml up -d db app-web
           echo "Waiting for web service to start..."
           sleep 25
 
@@ -75,15 +80,15 @@ jobs:
         run: |
           echo "=== TESTING WEB VERSION ==="
           # Test API
-          curl --fail --retry 3 --retry-delay 5 http://localhost:5001/api || (echo "Web API failed" && docker-compose logs app-web && exit 1)
+          curl --fail --retry 3 --retry-delay 5 http://localhost:5001/api || (echo "Web API failed" && docker-compose -f docker-compose.prod.yml logs app-web && exit 1)
           # Test Frontend
-          curl --fail --retry 3 --retry-delay 5 -L http://localhost:5001 | grep -q "<!DOCTYPE html" || (echo "Web frontend failed" && docker-compose logs app-web && exit 1)
+          curl --fail --retry 3 --retry-delay 5 -L http://localhost:5001 | grep -q "<!DOCTYPE html" || (echo "Web frontend failed" && docker-compose -f docker-compose.prod.yml logs app-web && exit 1)
           echo "✅ WEB version deployed successfully"
 
       - name: Tag and push WEB image
         run: |
-          docker tag $(docker-compose images -q app-web) ${{ secrets.DOCKER_USERNAME }}/cesizen-web:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/cesizen-web:latest
+          # L'image est déjà poussée par le CI, pas besoin de re-tag
+          echo "✅ Using image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest"
 
   # ==========================================
   # Job pour déployer la version MOBILE  
@@ -109,11 +114,16 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and deploy MOBILE version
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           echo "=== DEPLOYING MOBILE VERSION ==="
-          docker-compose down app-mobile || true
-          docker-compose build app-mobile
-          docker-compose up -d db app-mobile
+          # Arrêter et supprimer les conteneurs existants
+          docker-compose -f docker-compose.prod.yml down app-mobile || true
+          # Forcer la récupération de la dernière image
+          docker pull ${{ secrets.DOCKER_USERNAME }}/cesizen:latest
+          # Démarrer avec la nouvelle image
+          docker-compose -f docker-compose.prod.yml up -d db app-mobile
           echo "Waiting for mobile service to start..."
           sleep 25
 
@@ -121,15 +131,15 @@ jobs:
         run: |
           echo "=== TESTING MOBILE VERSION ==="
           # Test Mobile API
-          curl --fail --retry 3 --retry-delay 5 http://localhost:5002/ || (echo "Mobile API failed" && docker-compose logs app-mobile && exit 1)
+          curl --fail --retry 3 --retry-delay 5 http://localhost:5002/ || (echo "Mobile API failed" && docker-compose -f docker-compose.prod.yml logs app-mobile && exit 1)
           # Test Mobile assets availability
-          curl --fail --retry 3 --retry-delay 5 http://localhost:5002/mobile || (echo "Mobile assets not accessible" && docker-compose logs app-mobile)
+          curl --fail --retry 3 --retry-delay 5 http://localhost:5002/mobile || (echo "Mobile assets not accessible" && docker-compose -f docker-compose.prod.yml logs app-mobile)
           echo "✅ MOBILE version deployed successfully"
 
       - name: Tag and push MOBILE image
         run: |
-          docker tag $(docker-compose images -q app-mobile) ${{ secrets.DOCKER_USERNAME }}/cesizen-mobile:latest
-          docker push ${{ secrets.DOCKER_USERNAME }}/cesizen-mobile:latest
+          # L'image est déjà poussée par le CI, pas besoin de re-tag
+          echo "✅ Using image from CI: ${{ secrets.DOCKER_USERNAME }}/cesizen:latest"
 
   # ==========================================
   # Job de synthèse (optionnel)
